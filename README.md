@@ -31,25 +31,21 @@ Instalar una vez, conectar desde todos tus proyectos.
 
 ## Instalación
 
-```bash
-# 1. Clonar el repo (una vez)
-git clone https://github.com/deibanez/agentic-ecos.git
-cd agentic-ecos
+Ver el [Quickstart](#quickstart) para el flujo completo. En resumen:
 
-# 2. Instalar dependencias + el CLI
+```bash
+# Fork privado + clone (una vez)
+gh repo fork deibanez/agentic-ecos --clone --private
+cd agentic-ecos
+git remote add upstream https://github.com/deibanez/agentic-ecos.git
+
+# Dependencias + CLI
 # Con uv (recomendado):
 uv add --dev mcp
 uv pip install --editable .
 # Con pip:
 #   pip install mcp
 #   pip install --editable .
-
-# 3. Verificar que funciona
-agentic-ecos protocols           # lista las plantillas de protocolos
-
-# 4. Conectar el MCP server a tu agente (una vez por workspace)
-#    → escribe opencode.jsonc / .mcp.json / .cursor/mcp.json automáticamente
-agentic-ecos connect --target ~/repos --agent auto
 ```
 
 > **Dos comandos**:
@@ -59,10 +55,42 @@ agentic-ecos connect --target ~/repos --agent auto
 
 ## Quickstart
 
-### Paso 1 — Probar las tools (sin ecosistema, 30 segundos)
+### Setup único — fork privado + instalación (una vez)
+
+El fork privado cubre ambos casos de uso: las tools del **Modo 1** (simple)
+funcionan igual en un fork, y te habilita el **Modo 2** (ecosistema) cuando lo
+necesites. Solo `main` y `dev` del upstream son públicos — tu ecosistema vive
+en el fork privado (trazabilidad completa con `git log`).
+
+```bash
+# 0. Crear el fork privado + upstream (una vez)
+gh repo fork deibanez/agentic-ecos --clone --private
+cd agentic-ecos
+git remote add upstream https://github.com/deibanez/agentic-ecos.git
+
+# 1. Instalar dependencias + el CLI (una vez)
+uv add --dev mcp
+uv pip install --editable .
+
+# 2. Crear tu branch de ecosistema (una vez) — trazable, registra en AGENT_SESSION_LOG
+agentic-ecos ecosystem branch-create mi-eco --base main
+#   base=main (estable, recomendado) | base=dev (bleeding edge)
+
+# 3. Inicializar el plano de control (una vez por ecosistema)
+agentic-ecos ecosystem init --name mi-ecosistema --workspace ~/repos
+
+# 4. Conectar el MCP server a tu agente (una vez por workspace)
+#    → escribe opencode.jsonc / .mcp.json / .cursor/mcp.json automáticamente
+agentic-ecos connect --target ~/repos --agent auto
+
+# 5. Verificar que funciona
+agentic-ecos protocols
+```
+
+### Uso inmediato (Modo 1 — sin registro de proyectos)
 
 Las tools MCP funcionan **inmediatamente** tras conectar el server. No necesitás
-fork privado ni registro de ecosistema para esto:
+registrar proyectos en el ecosistema para esto:
 
 ```bash
 # Desde tu agente (con el MCP conectado):
@@ -99,33 +127,12 @@ El mismo ciclo via MCP: `ecosystem_task_add` → `ecosystem_task_status` →
 `ecosystem_task_claim` → `ecosystem_task_done`. Cada acción queda en
 `AGENT_SESSION_LOG.md` con el T-ID para trazabilidad.
 
-### Paso 2 — Crear tu ecosistema (opcional, avanzado)
+### Ecosistema multi-proyecto (Modo 2 — opcional, avanzado)
 
-Para gestionar **múltiples proyectos** con registro canónico, tareas
-cross-cutting y coordinación multi-agente:
-
-> **Fork privado obligatorio.** Solo `main` (estable) y `dev` (integración) del
-> upstream son públicos (código + knowledge/ + docs/). Tu ecosistema
-> (`workspace/` + `data/`) vive en un fork privado — con trazabilidad completa
-> (`git log` de cada cambio). Detalle en `CONTRIBUTING.md` §10.
+Cuando tengas varios proyectos, el ecosistema ya está inicializado (paso 3 del
+setup). Registrá proyectos y gestioná el ciclo:
 
 ```bash
-# 0. Crear el fork privado + branch de ecosistema (una vez)
-gh repo fork deibanez/agentic-ecos --clone --private
-cd agentic-ecos
-git remote add upstream https://github.com/deibanez/agentic-ecos.git
-agentic-ecos ecosystem branch-create mi-eco --base main
-#   base=main (estable, recomendado) | base=dev (bleeding edge)
-
-# 1. Inicializar el plano de control (una vez por ecosistema)
-agentic-ecos ecosystem init --name mi-ecosistema --workspace ~/repos
-
-# 2. Conectar el MCP server al workspace (multi-agente)
-agentic-ecos connect --target ~/repos --agent auto
-
-# 3. Desde el agente: generar infra agéntica para un proyecto
-#    → init_project("mi-proyecto", preset="monorepo", target_path=".../docs")
-
 # Mantenerse al día (trazable, registra en AGENT_SESSION_LOG)
 agentic-ecos ecosystem sync --branch main
 agentic-ecos ecosystem merge-main --target ecosystem/mi-eco
@@ -134,7 +141,13 @@ agentic-ecos ecosystem merge-main --target ecosystem/mi-eco
 > **Privacidad**: tu `workspace/` (proyectos, tareas) y `data/` (patterns en
 > experimentación) se commitean en tu fork **privado** — nadie más los ve.
 > Solo compartís lo que querés vía PR de `knowledge/` a `dev` (que luego
-> promueve a `main` cuando está estable).
+> promueve a `main` cuando está estable). Detalle en `CONTRIBUTING.md` §10.
+
+### Contribuir al upstream (para quienes hacen PRs)
+
+El fork privado contiene tu `workspace/` — no hagas PRs desde ahí. Usá un
+**clone público separado** para contribuir con `knowledge/` o código. Ver
+`CONTRIBUTING.md` §6.
 
 ## Uso con el agente (MCP)
 

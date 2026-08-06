@@ -41,6 +41,7 @@ purpose: Estado del desarrollo de agentic-ecos
 | 11 | Instalación simplificada (clone-and-run) | ✅ | entry points agentic-ecos (CLI) + agentic-ecos-server, connect usa venv |
 | 12 | Automatización CI/CD con LLMs | ✅ | CLI --json, llm.py (agnóstico), 5 workflows, task_loop (H1-H3) |
 | 13 | Gap de tareas cerrado + auto-contexto | ✅ | claim/done/status tools + SERVER_INSTRUCTIONS + connect instructions |
+| 14 | Onboarding unificado (fork privado único) | ✅ | Quickstart simplificado, sin 2 clones |
 
 ---
 
