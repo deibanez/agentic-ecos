@@ -139,5 +139,38 @@ class TestCLIJsonOutput(unittest.TestCase):
         assert "LLM_API_KEY" in data["error"]
 
 
+# ─── Contexto sistémico (inyección en respuestas MCP) ───────────────────────
+
+class TestContextInjection(unittest.TestCase):
+    def test_context_helpers_compact(self):
+        from agentic_ecos import server as srv
+        ctx = srv._context()
+        # Los helpers deben funcionar y devolver estructura válida
+        assert "system_health" in ctx
+        assert "ecosystem_summary" in ctx
+        assert "task_backlog" in ctx
+        assert "knowledge_state" in ctx
+        # knowledge_state debe reflejar el conocimiento curado
+        assert ctx["knowledge_state"]["tier1_builtin"] >= 17
+        assert ctx["knowledge_state"]["tier2_traps"] >= 13
+
+    def test_inject_context_preserves_result(self):
+        from agentic_ecos import server as srv
+        result = {"ok": True, "coverage_pct": 75.0}
+        injected = srv._inject_context(result)
+        # Los campos originales se preservan
+        assert injected["ok"] is True
+        assert injected["coverage_pct"] == 75.0
+        # Se agrega _context
+        assert "_context" in injected
+        assert "ecosystem_summary" in injected["_context"]
+
+    def test_inject_context_does_not_overwrite_existing(self):
+        from agentic_ecos import server as srv
+        result = {"ok": True, "_context": {"custom": "already_here"}}
+        injected = srv._inject_context(result)
+        assert injected["_context"]["custom"] == "already_here"
+
+
 if __name__ == "__main__":
     unittest.main()

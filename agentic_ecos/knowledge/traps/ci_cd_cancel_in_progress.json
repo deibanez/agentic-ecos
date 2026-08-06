@@ -1,0 +1,15 @@
+{
+  "name": "ci_cd_cancel_in_progress",
+  "domain": "ci_cd",
+  "title": "cancel-in-progress: false is mandatory for deploys",
+  "symptom": "Deploy cancelled mid-way when rapid pushes occur; infrastructure left in inconsistent state (corrupt Terraform state, partially synced S3, ECS service mid-update)",
+  "cause": "concurrency.cancel-in-progress: true kills the in-flight deploy when a second push arrives",
+  "fix": "Always set cancel-in-progress: false in deploy workflow concurrency groups. The group is serial anyway, so there is no performance penalty.",
+  "mal_code": "concurrency:\n  group: infra-dev\n  cancel-in-progress: true  # KILLS in-flight deploys",
+  "good_code": "concurrency:\n  group: infra-dev\n  cancel-in-progress: false  # safe, serial",
+  "origin": "agv-docs/IAC_TRAPS.md + AGENTS.md trap 1, validated across 15+ repos",
+  "universal": true,
+  "clouds": [
+    "all"
+  ]
+}

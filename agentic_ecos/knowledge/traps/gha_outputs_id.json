@@ -1,0 +1,15 @@
+{
+  "name": "gha_outputs_id",
+  "domain": "ci_cd",
+  "title": "Job 'outputs:' and 'steps.<name>.outputs' require explicit 'id:' on the step",
+  "symptom": "A job output or steps.<name>.outputs reference never resolves, silently",
+  "cause": "echo 'x=y' >> $GITHUB_OUTPUT without id: on the step means the output is orphaned",
+  "fix": "Give the step an explicit id: and reference steps.<id>.outputs.<var>",
+  "mal_code": "- name: Diagnose\n  run: echo \"stale=true\" >> $GITHUB_OUTPUT\n- name: Alert\n  if: steps.diagnose.outputs.stale == 'true'  # never fires",
+  "good_code": "- name: Diagnose\n  id: diag\n  run: echo \"stale=true\" >> $GITHUB_OUTPUT\n- name: Alert\n  if: steps.diag.outputs.stale == 'true'",
+  "origin": "agv-docs/AGENTS.md traps 9/11",
+  "universal": true,
+  "clouds": [
+    "all"
+  ]
+}

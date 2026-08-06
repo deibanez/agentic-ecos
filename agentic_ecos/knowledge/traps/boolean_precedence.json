@@ -1,0 +1,15 @@
+{
+  "name": "boolean_precedence",
+  "domain": "python",
+  "title": "'a and b or c' evaluates as '(a and b) or c', not 'a and (b or c)'",
+  "symptom": "Boolean logic produces false positives/negatives that are hard to trace",
+  "cause": "Operator precedence: 'and' binds tighter than 'or', so the expression is (a and b) or c",
+  "fix": "Add explicit parentheses to make the intended grouping unambiguous",
+  "mal_code": "if a and b or c:  # means (a and b) or c",
+  "good_code": "if a and (b or c):",
+  "origin": "agv-docs/IAC_TRAPS.md (boolean precedence trap)",
+  "universal": true,
+  "clouds": [
+    "all"
+  ]
+}

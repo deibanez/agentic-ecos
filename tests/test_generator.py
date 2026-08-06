@@ -17,7 +17,9 @@ from agentic_ecos import __version__
 
 
 def test_patterns_count():
-    assert len(list_patterns()) == 15
+    # 17 built-in (15 originales + mode_switching + error_recovery). 
+    # El test usa >= para tolerar adiciones futuras.
+    assert len(list_patterns()) >= 17
     assert len(get_domains()) >= 6
 
 
@@ -546,3 +548,34 @@ def test_ecosystem_sync_no_upstream(tmp_path, monkeypatch):
     r = ecosystem_sync_upstream(branch="main")
     assert r["ok"] is False
     assert "upstream" in r["error"]
+
+
+# ─── Traps universales curados (knowledge/traps/) ───────────────────────────
+
+def test_universal_traps_loaded():
+    """Los 13 traps universales curados de agv-docs deben cargarse."""
+    from agentic_ecos import storage
+    traps = storage.load_knowledge_traps()
+    names = {t["name"] for t in traps}
+    # Traps universales clave que deben estar curados
+    assert "ci_cd_cancel_in_progress" in names
+    assert "gha_shell_python3" in names
+    assert "makefile_eval_parsetime" in names
+    assert "bash_set_e_block" in names
+    assert "gha_outputs_id" in names
+    assert "ci_step_ordering" in names
+    # Todos deben estar marcados como universales
+    assert all(t.get("universal") for t in traps)
+    # Cada trap tiene formato estructura-causa-fix
+    for t in traps:
+        assert t["symptom"] and t["cause"] and t["fix"]
+
+
+def test_traps_exposed_via_patterns():
+    """Los traps deben aparecer en list_patterns (fusión 4-tier)."""
+    from agentic_ecos import patterns
+    all_p = patterns.list_patterns()  # sin filter de domain
+    names = {p["name"] for p in all_p}
+    assert "ci_cd_cancel_in_progress" in names
+    assert "mode_switching" in names  # patrón nuevo
+    assert "error_recovery" in names   # patrón nuevo

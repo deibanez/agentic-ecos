@@ -1,0 +1,15 @@
+{
+  "name": "python_func_sig_mismatch",
+  "domain": "python",
+  "title": "Function signature mismatch between caller and callee causing NameError",
+  "symptom": "A function fails at runtime with NameError or TypeError, even though it looks correct",
+  "cause": "The caller passes N args but the callee accepts M; or an f-string references a variable that was never bound",
+  "fix": "Verify the function signature and all referenced variables; add type hints and tests that exercise the actual call path",
+  "mal_code": "def f(a, b):\n    return f\"{c}\"  # c undefined\nf(1, 2, 3)          # wrong arity",
+  "good_code": "def f(a, b, c):\n    return f\"{c}\"\nf(1, 2, 3)",
+  "origin": "agv-docs/IAC_TRAPS.md (Python signature trap)",
+  "universal": true,
+  "clouds": [
+    "all"
+  ]
+}

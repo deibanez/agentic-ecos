@@ -41,6 +41,30 @@ Orden de lectura al inicio de sesión:
 - Si encuentras información que contradice el memory bank, **actualízalo**.
 - Al finalizar cada sesión, **actualiza MEMORY_BANK.md** con lo que hiciste.
 
+### 1.1.1 Self-Referential Rule
+
+> **Este protocolo se aplica a sí mismo.**
+
+Editar archivos de reglas (`RULES/`, `SKILLS/`, protocolos) requiere el ciclo de
+vida completo (register → lock → heartbeat → session log → memory bank). **No hay
+excepción por "es solo documentación"** — los archivos de reglas definen el
+comportamiento de todos los agentes.
+
+### 1.1.2 Mode Switching — Clasificar ANTES de leer
+
+> **Determinar el modo operativo de la tarea ANTES de leer cualquier archivo.**
+
+| Señal en la petición | Modo | Lectura mínima | Prohibido |
+|----------------------|------|----------------|-----------|
+| seriales, fechas, "migrar/copiar/limpiar datos" | DATA | skill file → firma de función | grep en código, explorar modelos/frontend |
+| modificar `.py` / tests | CODE | tribal knowledge → modelos → tests | buscar datos runtime en código |
+| modificar `.tf` / deploy | INFRA | IAC_TRAPS → estándares → main.tf | editar lógica de aplicación |
+| audit workflows / trigger deploy | CI/CD | workflow_run_audit → estándares | modificar lógica de aplicación |
+| escribir docs / skills / ADRs | DOCS | plantillas existentes | modificar código de producción |
+
+**Regla de oro**: clasificar el modo evita el anti-patrón más común de gasto de
+tokens — leer los archivos incorrectos para el dominio de la tarea.
+
 ### 1.2 Risk Tiers
 
 | Tier | Tareas | Lifecycle requerido |
@@ -138,7 +162,42 @@ Si respondiste NO a alguna: pausa y replantea.
 
 ---
 
-## IV. Agent Session Checklist
+## IV. Decision Frameworks
+
+### 4.1 Risk Assessment Matrix
+
+Evalúa cada cambio usando impacto × probabilidad:
+
+```
+Impacto:      Bajo (reversible, este repo, sin datos) · Medio (2-3 repos)
+              · Alto (todo el ecosistema, producción)
+Probabilidad: Baja (trivial, con tests) · Media (moderado) · Alta (complejo)
+
+Bajo×Baja = ✅ ejecutar directo      Medio×Baja = ✅ con rollback
+Bajo×Media = ✅ con verificación     Medio×Media = ⚠️ preguntar
+Bajo×Alta = ⚠️ investigar primero    Medio×Alta = ❌ aprobación
+Alto×Baja = ⚠️ preguntar            Alto×Media = ❌ aprobación
+                                    Alto×Alta = ❌ escalar
+```
+
+### 4.2 Cuando Proponer un ADR
+
+Proponer ADR cuando: afecta múltiples repos · cambia arquitectura · consecuencias
+a largo plazo · múltiples opciones viables · decisión controversial.
+NO proponer cuando: bugfix obvio · config menor · dependencia · cambio puramente técnico.
+
+### 4.3 Reglas de Delegación
+
+| Delegar a humano | Delegar a otro agente |
+|------------------|----------------------|
+| Aprobación de PR | Tarea de otra fase |
+| Acceso a secrets | Experiencia específica |
+| Decisión de negocio | Tarea paralelizable |
+| Riesgo alto / conflicto | — |
+
+---
+
+## V. Agent Session Checklist
 
 | # | Paso | Comando / Acción |
 |---|------|------------------|
@@ -164,6 +223,51 @@ Si respondiste NO a alguna: pausa y replantea.
 2. ¿Qué descubriste que debería codificarse? ¿Dónde?
 3. ¿El plan se verificó contra datos vivos?
 4. ¿Hay algo que genere un falso positivo más adelante?
+```
+
+---
+
+## VI. Session Bootstrap Protocol
+
+> **Regla**: antes de planificar o ejecutar tareas basadas en análisis del ecosistema,
+> verificar contra datos vivos. Previene "planear sobre datos stale que la realidad ya resolvió".
+
+```
+1. TRIGGER ANALYZE (si datos > 12h stale) → disparar análisis → esperar (~60s)
+2. CROSS-CHECK LIVE → snapshot en vivo → contrastar contra datos cacheados
+   → identificar discrepancias (deploy marcado OK pero FAIL live, o viceversa)
+3. CORREGIR KANBAN (si hay discrepancias) → cerrar/reabrir tareas según realidad
+4. SOLO DESPUÉS → planificar tareas
+```
+
+**Confirmación de deploys reportados como FAIL**: antes de crear una tarea por un
+deploy fallido, confirmar el workflow real (`workflow_run_audit`). Si el real es
+SUCCESS → cerrar la sospecha. Solo si ambos confirman FAIL → crear tarea.
+
+## VII. Investigation Playbooks
+
+### Explorar un repo nuevo
+```
+1. MEMORY_BANK.md del repo → 2. README → 3. ARCHITECTURE.md
+4. estructura de directorios clave → 5. archivos específicos
+```
+
+### Diagnosticar un bug/inconsistencia
+```
+1. Definir síntoma exacto → 2. buscar en memory bank / IAC_TRAPS
+3. logs de CI/CD → 4. comparar branches → 5. documentar hallazgo
+```
+
+### Analizar drift
+```
+1. drift_report() → 2. identificar drifts de alta severidad
+3. ¿esperado (cambio intencional) o bug (merge incompleto)?
+```
+
+### Validar deploys
+```
+1. overview → 2. health scores → 3. para repos con poor/critical:
+   repo_details → workflow_run_audit → proponer fix
 ```
 
 ---
@@ -274,9 +378,66 @@ git commit && git push → ✅ OK            git commit && git push → ❌ REJE
 | Síntoma | Acción del agente |
 |---------|------------------|
 | CI/CD workflow falla post-merge | Rollback commit, fix, re-deploy |
+| Plan muestra cambios inesperados | Detener, notificar en AGENT_COMMS.md, no mergear |
 | Lock de agente expirado sin heartbeat | Reclamar lock automáticamente |
 | Deadlock detectado | Liberar todos los locks, esperar 30s, reintentar en orden |
 | Dependencia bloqueante | AGENT_COMMS.md con label `blocked` |
+| Falla de deploy en producción | Rollback PR, aplicar versión anterior, notificar con label `escalation` |
+| Error de script de lock | Crear lock manualmente siguiendo el formato, notificar en COMMS |
+
+## VIII. Phase Transition Gates
+
+> Checklist obligatorio antes de avanzar de una fase a la siguiente.
+
+```
+Gate Fase N → Fase N+1:
+  □ Todos los componentes de Fase N tienen: infra, CI/CD funcional, memory bank
+  □ Dependencias críticas resueltas (roles, módulos compartidos, secrets)
+  □ Plan exitoso en el entorno objetivo
+  □ Healthcheck post-deploy verde
+  □ STATE/WORKSPACE_STATE.md actualizado
+  □ Documentación de overview actualizada
+
+Gate de emergencia — Rollback:
+  Si Fase N falla en producción:
+  □ Revertir PR → aplicar versión anterior → notificar (escalation)
+  □ No avanzar a Fase N+1 hasta resolver
+```
+
+## IX. Shared State Convention
+
+`STATE/WORKSPACE_STATE.md` es el archivo de estado compartido:
+
+1. **Antes de empezar**: leer el archivo para saber qué fases están completas
+2. **Durante**: adquirir lock, actualizar columna "Status" de su fase a ⏳
+3. **Al terminar**: actualizar a ✅ y agregar notas de handoff
+4. **Si hay bloqueante**: actualizar a ❌ + enlace al mensaje en AGENT_COMMS.md
+
+**Regla de edición**: adquirir lock en `STATE/WORKSPACE_STATE.md` antes de modificarlo.
+
+## X. Status Reporting Format
+
+```markdown
+## Status: {componente} — {fecha}
+
+### ✅ Completado   — {cambios}
+### ⏳ En progreso  — {cambio} — {razón de demora}
+### ❌ Bloqueado    — {cambio} — {bloqueante} — {link a COMMS}
+### ⚠️ Riesgos      — {riesgo}
+### 📝 Notas        — {nota}
+```
+
+## XI. Escalation Criteria
+
+| Síntoma | Acción |
+|---------|--------|
+| Bug tomó >30 min en diagnosticar | SESSION_LOG + AGENT_COMMS.md |
+| Se necesita decisión humana | AGENT_COMMS.md con label `question` + @admin |
+| Lock ocupado por agente caído | Supervisor hace force-unlock |
+| Dependencia bloqueante de otro componente | AGENT_COMMS.md con label `blocked` |
+| Cambio arquitectónico propuesto | Crear ADR + AGENT_COMMS.md con label `notice` |
+| Fase de migración completada | AGENT_COMMS.md con label `handoff` |
+| Fallo de deploy en producción | AGENT_COMMS.md con label `escalation` + @admin |
 
 ---
 

@@ -1,0 +1,15 @@
+{
+  "name": "ci_cd_no_color",
+  "domain": "ci_cd",
+  "title": "CLI tools in CI must use --no-color to avoid ANSI corruption",
+  "symptom": "CI logs and PR comments contain raw ANSI escape codes that corrupt output and break parsing",
+  "cause": "CLI tools emit ANSI color codes when not a TTY; CI captures raw stdout",
+  "fix": "Use --no-color / NO_COLOR env var / -color=false for all CLI tools in CI steps and scripts",
+  "mal_code": "terraform plan -detailed-exitcode  # emits ANSI in CI",
+  "good_code": "NO_COLOR=1 terraform plan -detailed-exitcode",
+  "origin": "agv-docs/IAC_TRAPS.md (generic CI pattern)",
+  "universal": true,
+  "clouds": [
+    "all"
+  ]
+}

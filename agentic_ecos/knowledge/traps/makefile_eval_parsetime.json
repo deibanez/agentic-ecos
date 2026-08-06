@@ -1,0 +1,15 @@
+{
+  "name": "makefile_eval_parsetime",
+  "domain": "build",
+  "title": "$(eval ...) in Makefiles evaluates at parse-time, not run-time",
+  "symptom": "A target works in one context but silently uses wrong variable values in another",
+  "cause": "$(eval export VAR ?= ...) freezes the variable when the Makefile is READ, not when the target runs",
+  "fix": "Put variable expansion inside the recipe, not in $(eval ...) at top level",
+  "mal_code": "$(eval export TF_VAR_image_tag ?= dev-$(GIT_SHA))  # frozen at parse",
+  "good_code": "deploy: ; export TF_VAR_image_tag=dev-$$GIT_SHA; terraform apply",
+  "origin": "agv-docs/IAC_TRAPS.md (Makefile trap)",
+  "universal": true,
+  "clouds": [
+    "all"
+  ]
+}

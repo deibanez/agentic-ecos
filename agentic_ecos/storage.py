@@ -94,6 +94,12 @@ def add_custom_pattern(pattern: dict) -> dict:
     pattern.setdefault("source", "agent-discovery")
     patterns.append(pattern)
     path = save_json(FILES["patterns_custom"], patterns)
+    # Hook: sincronizar Home.md del vault
+    try:
+        from .sync_home import hook_sync_home
+        hook_sync_home()
+    except Exception:
+        pass
     return {"ok": True, "pattern": pattern, "path": str(path), "total_custom": len(patterns)}
 
 
@@ -198,17 +204,24 @@ def get_knowledge_dir() -> Path:
     return KNOWLEDGE_DIR
 
 
-def _load_json_files(directory: Path) -> list[dict]:
-    """Carga todos los *.json de un directorio como lista de dicts."""
+def _load_json_files(directory: Path, recursive: bool = False) -> list[dict]:
+    """Carga todos los *.json de un directorio como lista de dicts.
+
+    Si `recursive` es True, también carga los *.json de subdirectorios
+    (ej: knowledge/traps/aws/*.json).
+    """
     if not directory.exists():
         return []
+    pattern = "**/*.json" if recursive else "*.json"
     items = []
-    for f in sorted(directory.glob("*.json")):
+    for f in sorted(directory.glob(pattern)):
+        if ".gitkeep" in f.name or f.name.endswith(".tmp"):
+            continue
         try:
             with open(f, "r") as fh:
                 data = json.load(fh)
             if isinstance(data, dict):
-                data.setdefault("source_file", f.name)
+                data.setdefault("source_file", str(f))
                 items.append(data)
             elif isinstance(data, list):
                 items.extend(data)
@@ -232,8 +245,11 @@ def load_knowledge_presets() -> dict[str, dict]:
 
 
 def load_knowledge_traps() -> list[dict]:
-    """Carga traps comunitarios de knowledge/traps/*.json (tier 2)."""
-    return _load_json_files(get_knowledge_dir() / "traps")
+    """Carga traps comunitarios de knowledge/traps/** (tier 2).
+
+    Recursivo: incluye traps de subdirectorios por nube (aws/, gcp/, azure/, do/).
+    """
+    return _load_json_files(get_knowledge_dir() / "traps", recursive=True)
 
 
 def save_knowledge_pattern(pattern: dict) -> Path:

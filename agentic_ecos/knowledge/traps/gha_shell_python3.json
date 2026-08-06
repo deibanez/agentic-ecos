@@ -1,0 +1,15 @@
+{
+  "name": "gha_shell_python3",
+  "domain": "ci_cd",
+  "title": "'shell: python3' is not a valid GitHub Actions shell",
+  "symptom": "A workflow step with shell: python3 silently fails or is ignored",
+  "cause": "GitHub Actions only recognizes: bash, sh, python, pwsh, cmd, powershell. 'python3' is not valid",
+  "fix": "Use 'shell: python' (or bash) instead of 'shell: python3'",
+  "mal_code": "- name: Run\n  shell: python3   # INVALID",
+  "good_code": "- name: Run\n  shell: python    # OK",
+  "origin": "agv-docs/AGENTS.md trap 7",
+  "universal": true,
+  "clouds": [
+    "all"
+  ]
+}

@@ -43,6 +43,49 @@ purpose: Catálogo de capacidades del agente (skills por dominio)
      (Learning Incorporation Reflex).
 -->
 
+## Convención de Naming
+
+Cada skill lleva un prefijo que indica su dominio:
+
+| Prefijo | Dominio | Ejemplo |
+|---------|---------|---------|
+| `explore-` | Investigación / lectura | `explore-repo`, `explore-drift` |
+| `ci-cd-` | Pipelines y deploys | `ci-cd-audit`, `ci-cd-fix` |
+| `iac-` | Infraestructura como código | `iac-validate`, `iac-plan` |
+| `lifecycle-` | Ciclo de vida del agente | `lifecycle-register`, `lifecycle-close` |
+| `data-` | Operaciones de datos | `data-migrate`, `data-cleanup` |
+| `git-` | Operaciones git / branches | `git-sync`, `git-merge` |
+| `docs-` | Documentación | `docs-sync`, `docs-adr` |
+| `test-` | Testing y verificación | `test-verify`, `test-coverage` |
+
+## Taxonomía de Materialización
+
+Una skill puede materializarse de 3 formas:
+
+| Tipo | Qué es | Cuándo |
+|------|--------|--------|
+| **MCP tool** | Tool expuesta por el server MCP | Consultas frecuentes, datos estructurados |
+| **Script local** | Makefile target o script en `scripts/` | Operaciones con git/AWS, pipelines |
+| **Documentada** | Skill descrita solo en este catálogo | Guías de procedimiento, juicio experto |
+
+## Anti-patterns por Dominio
+
+<!-- CUSTOMIZE: Documenta los "NUNCA hacer" de cada dominio.
+     Formato: | Dominio | Anti-pattern | Por qué |
+     |---------|-------------|---------|
+     | DATA | grep serials en código | Los serials viven en la BD, no en archivos |
+     | INFRA | editar lógica de aplicación | La lógica pertenece al codebase, no al IaC |
+-->
+
+## Matriz MCP vs Local
+
+| Situación | Herramienta | Por qué |
+|-----------|------------|---------|
+| Consulta rápida del ecosistema | MCP tool | Datos estructurados, sin CLI |
+| Operación con git | Script local | Git es nativo, no necesita MCP |
+| Pipeline completo | Makefile target | Orquesta varios pasos |
+| Sin acceso a GH_PAT | Script local | MCP tools que requieren PAT fallan |
+
 ---
 
 ## Referencia

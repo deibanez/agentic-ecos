@@ -1,0 +1,15 @@
+{
+  "name": "python_import_as_attr",
+  "domain": "python",
+  "title": "Imported object used as a class attribute causes AttributeError",
+  "symptom": "Using an imported name as if it were a class attribute fails with AttributeError",
+  "cause": "The imported object (e.g., Q from django.db.models) is a module-level name, not an attribute of the class",
+  "fix": "Import the object into the module namespace and reference it directly, or qualify with the module name",
+  "mal_code": "class Model:\n    def method(self):\n        return self.Q(...)  # AttributeError",
+  "good_code": "from django.db.models import Q\nclass Model:\n    def method(self):\n        return Q(...)",
+  "origin": "agv-docs/IAC_TRAPS.md (import-as-attribute trap, generalized)",
+  "universal": true,
+  "clouds": [
+    "all"
+  ]
+}

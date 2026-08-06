@@ -1,0 +1,15 @@
+{
+  "name": "repl_paste_syntax",
+  "domain": "shell",
+  "title": "Consecutive top-level 'if' blocks pasted into a REPL cause SyntaxError",
+  "symptom": "Pasting a multi-statement script into a Python REPL fails with IndentationError or SyntaxError",
+  "cause": "The REPL parses consecutive top-level compound statements as one block and fails on the second",
+  "fix": "Wrap each statement in a function, add explicit newlines between compound statements, or execute from a file",
+  "mal_code": "if a:\n    pass\nif b:\n    pass  # REPL chokes",
+  "good_code": "def run():\n    if a:\n        pass\n    if b:\n        pass\nrun()",
+  "origin": "agv-docs/IAC_TRAPS.md (REPL paste trap)",
+  "universal": true,
+  "clouds": [
+    "all"
+  ]
+}
