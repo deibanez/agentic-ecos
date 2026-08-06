@@ -556,6 +556,15 @@ def main():
     p_eco_addtask.add_argument("--type", default="ops")
     p_eco_addtask.add_argument("--scope", default="ecosystem")
     p_eco_addtask.add_argument("--config", default=None)
+    p_eco_branch = p_eco_sub.add_parser("branch-create", help="Crea tu branch de ecosistema.")
+    p_eco_branch.add_argument("name")
+    p_eco_branch.add_argument("--base", default="main",
+                              help="main (estable) | dev (bleeding edge)")
+    p_eco_sync = p_eco_sub.add_parser("sync", help="Sincroniza una branch con upstream.")
+    p_eco_sync.add_argument("--branch", default="main", help="main | dev")
+    p_eco_merge = p_eco_sub.add_parser("merge-main",
+                                       help="Mergea main a la branch de ecosistema.")
+    p_eco_merge.add_argument("--target", default=None)
 
     p_connect = sub.add_parser("connect", help="Conecta agentic-ecos a uno o más agentes.")
     p_connect.add_argument("--target", default=None)
@@ -614,6 +623,31 @@ def main():
             r = ecosystem_task_add(args.description, priority=args.priority,
                                    type=args.type, scope=args.scope, config_path=args.config)
             print(f"✅ {r.get('task_id', '?')} agregada en {r.get('path', '?')}")
+            return 0
+        if args.eco_command == "branch-create":
+            from .ecosystem import ecosystem_branch_create
+            r = ecosystem_branch_create(args.name, base=args.base)
+            if not r["ok"]:
+                print(f"❌ {r['error']}")
+                return 1
+            print(f"✅ Branch {r['branch']} creada (base={r['base']})")
+            print(f"   workspace: {r['workspace']}")
+            return 0
+        if args.eco_command == "sync":
+            from .ecosystem import ecosystem_sync_upstream
+            r = ecosystem_sync_upstream(branch=args.branch)
+            if not r["ok"]:
+                print(f"❌ {r['error']}")
+                return 1
+            print(f"✅ {r['branch']} → {r['status']} ({r['detail']})")
+            return 0
+        if args.eco_command == "merge-main":
+            from .ecosystem import ecosystem_merge_main
+            r = ecosystem_merge_main(args.target)
+            if not r["ok"]:
+                print(f"❌ Conflicto en {r.get('conflicted_files', [])}")
+                return 1
+            print(f"✅ main mergeado a {r['target_branch']}")
             return 0
 
     if args.command == "connect":

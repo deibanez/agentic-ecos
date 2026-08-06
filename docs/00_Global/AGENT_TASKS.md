@@ -25,6 +25,7 @@ canonical: true
 - [x] T7: Escribir CONTRIBUTING.md (flujo de forking, upgrade, ciclo del conocimiento) [priority:: medium] [status:: done] [type:: docs] [repo:: agentic-ecos]
 - [x] T8: Documentar flujo de fork privado para privacidad (CONTRIBUTING §9, README, ARCHITECTURE, instructions, AGENTS) [priority:: medium] [status:: done] [type:: docs] [repo:: agentic-ecos]
 - [x] T9: Refinar modelo: solo main público, ecosystem/* en forks privados, data/ patterns/presets commiteados [priority:: medium] [status:: done] [type:: docs] [repo:: agentic-ecos]
+- [x] T10: Tools MCP de git (branch_create, sync_upstream, merge_main) + rama dev en upstream [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
 
 <!-- TASKS_END -->
 

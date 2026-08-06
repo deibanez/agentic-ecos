@@ -9,34 +9,40 @@
 ## 1. Modelo de branches
 
 `agentic-ecos` separa lo **oficial** (público) de lo **específico de cada
-ecosistema** (privado) con branches y forks:
+ecosistema** (privado) con branches y forks. El upstream usa **dos ramas
+públicas**: `main` (estable) y `dev` (integración):
 
 ```
 UPSTREAM (público)                    TU FORK (privado)
 ─────────────────────                ─────────────────────
-main                                  main (sync desde upstream)
-├── agentic_ecos/                     │
-├── agentic_ecos/knowledge/           ├── ecosystem/mi-eco
-└── docs/                             │   └── workspace/
-    (NO tiene workspace/,             │       ├── agentic.toml
-     NO tiene branches ecosystem/)    │       ├── tasks.md
-                                      │       └── patterns/
-                                      │
-                                      └── ecosystem/otro-cliente
-feature/add-pattern ← PRs                 └── workspace/
+main (estable, releases)              main (sync desde upstream/main)
+  ↑                                   │
+  └── dev (integración)               ├── ecosystem/mi-eco   ← basado en main (estable)
+        ↑                             │   └── workspace/
+        ├── feature/* PRs             │
+        └── knowledge/* PRs           └── (opcional: ecosistema basado en dev
+  (NO tiene workspace/,                        para bleeding edge)
+   NO tiene branches ecosystem/)
 ```
 
+**Flujo de PRs**: `feature/* → dev` (integración) → `main` (estable, testeado).
+Los PRs de `knowledge/*` también van a `dev`. Solo se mergea `dev → main` cuando
+el estado está testeado y estable.
+
 **Reglas de visibilidad**:
-- **`main` es la única branch pública.** Contiene código + knowledge/ + docs/.
+- **`main` (estable) y `dev` (integración) son las branches públicas.**
+  Contienen código + knowledge/ + docs/.
 - **Las branches `ecosystem/*` solo existen en forks privados.** Contienen
   tu `workspace/` (proyectos, tareas, patrones) — siempre privado.
 - **Para usar agentic-ecos con tu propio ecosistema**: fork privado obligatorio.
+  Tu branch de ecosistema se crea desde `main` (estable, recomendado) o `dev`
+  (bleeding edge) — ver `ecosystem_branch_create(base=...)`.
 - **Para contribuir al código/knowledge del upstream**: clon público separado,
-  branch `feature/*` desde `main`, PR. Sin `workspace/`.
+  branch `feature/*` desde `dev`, PR a `dev`. Sin `workspace/`.
 - `git merge main` en tu branch de ecosistema nunca toca `workspace/` ni `data/`.
 
-**Separación garantizada**: `main` NO tiene `workspace/`. Cada branch de
-ecosistema (en fork privado) crea el suyo.
+**Separación garantizada**: `main` y `dev` NO tienen `workspace/`. Cada branch
+de ecosistema (en fork privado) crea el suyo.
 
 ---
 
@@ -44,7 +50,8 @@ ecosistema (en fork privado) crea el suyo.
 
 > **El fork privado es obligatorio** para usar agentic-ecos con tu propio
 > ecosistema. Tu `workspace/` (proyectos, tareas, patrones) se commitea ahí —
-> nunca en un repo público. Solo `main` del upstream es público.
+> nunca en un repo público. Solo `main` (estable) y `dev` (integración) del
+> upstream son públicos.
 
 ```bash
 # 1. Crear el fork privado (una vez)
@@ -54,8 +61,11 @@ cd agentic-ecos
 # 2. Agregar upstream para sincronizar (una vez)
 git remote add upstream https://github.com/usuario/agentic-ecos.git
 
-# 3. Crear tu branch de ecosistema (una vez)
-git checkout -b ecosystem/mi-eco main
+# 3. Crear tu branch de ecosistema (una vez) — vía tool MCP (trazable)
+agentic-ecos ecosystem branch-create mi-eco --base main
+#   base=main (estable, recomendado) | base=dev (bleeding edge)
+#   → equivalente a: git checkout -b ecosystem/mi-eco main
+#   → registrado en AGENT_SESSION_LOG con T-ID
 
 # 4. Inicializar el plano de control
 agentic-ecos ecosystem init --name "mi-ecosistema" --workspace ~/repos
@@ -68,6 +78,13 @@ agentic-ecos connect --target ~/repos --agent auto
 # 6. Desde el agente, bootstrapear proyectos
 #   → init_project("mi-api", preset="monorepo", target_path="~/repos/mi-api/docs")
 ```
+
+> **¿Main o dev como base?**
+> - **`main`** (default): estable, testeado. Recomendado para ecosistemas en
+>   producción.
+> - **`dev`** (opcional): bleeding edge, con las últimas features y knowledge.
+>   Elegilo si querés seguir de cerca el desarrollo del upstream.
+> Cambiá la base con `agentic-ecos ecosystem branch-create mi-eco --base dev`.
 
 ---
 
@@ -83,29 +100,35 @@ git checkout ecosystem/mi-eco
 #   ecosystem_task_add()    → nueva tarea cross-cutting
 #   init_project(...)       → bootstrap de un proyecto nuevo
 #   add_custom_pattern(...) → documenta un patrón descubierto
+#   ecosystem_sync_upstream()  → sync de main/dev con upstream (trazable)
+#   ecosystem_merge_main()     → merge de main a tu branch (trazable)
 ```
 
 ---
 
 ## 4. Actualizar desde upstream
 
-```bash
-# Fork público
-git checkout main
-git pull origin main               # o git fetch upstream && git merge
-git checkout ecosystem/mi-eco
-git merge main                     # 0 conflictos: workspace/ no existe en main
+Usá las tools MCP (trazables, registran en AGENT_SESSION_LOG) o git directo:
 
-# Fork privado (ver §9): la sincronización es idéntica, pero tu workspace/
-# se pushea a tu repo privado, nunca al público.
+```bash
+# Opción A — tools MCP (recomendado, trazable)
+agentic-ecos ecosystem sync --branch main     # sync tu main estable desde upstream
+agentic-ecos ecosystem merge-main --target ecosystem/mi-eco  # merge main → tu ecosistema
+
+# Opción B — git directo (fork privado)
 git fetch upstream
 git checkout main && git merge upstream/main
 git checkout ecosystem/mi-eco && git merge main
 git push origin ecosystem/mi-eco   # ← a tu repo privado
+
+# Opcional — seguir dev (bleeding edge) en vez de main
+agentic-ecos ecosystem sync --branch dev       # sync tu dev desde upstream
+agentic-ecos ecosystem merge-main --target ecosystem/mi-eco
 ```
 
 > **Nota**: en un fork privado, `origin` = tu repo privado, `upstream` = el repo
 > público matriz. Todo el `git push` de tu `workspace/` va a `origin` (privado).
+> Si tu ecosistema está basado en `dev`, sincronizá `dev` en vez de `main`.
 
 ---
 
@@ -152,21 +175,26 @@ agentic-ecos ecosystem status   # o knowledge_status vía MCP
 
 ## 6. Contribuir al repo matriz
 
+Los PRs van a **`dev`** (integración), no directo a `main`. Solo se mergea
+`dev → main` cuando el estado está testeado y estable.
+
 ```bash
-git checkout -b feature/add-cold-start-pattern main
+# Desde un clon público separado (sin workspace/)
+git checkout -b feature/add-cold-start-pattern dev
 
 # Opción A: desde el MCP, promote_to_knowledge(...)
 # Opción B: editar agentic_ecos/knowledge/patterns/aws-lambda-cold-start.json
 
 git add agentic_ecos/knowledge/
 git commit -m "knowledge: add lambda cold start pattern"
-git push && crear PR → main
+git push && crear PR → dev
 ```
 
-**Reglas para contribuir a `main`**:
+**Reglas para contribuir a `dev`**:
 - Patrón validado en ≥2 ecosistemas independientes.
 - Documentado con `description`, `when_to_use`, `implementation_guide`.
 - Un archivo por item en `agentic_ecos/knowledge/`.
+- El merge `dev → main` es periódico, solo cuando `dev` está estable.
 
 ---
 

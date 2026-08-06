@@ -36,7 +36,9 @@ from .protocols import PROTOCOLS, get_protocol
 from .presets import all_presets, PRESETS
 from .ecosystem import (ecosystem_init, ecosystem_status, project_add,
                         project_remove, connect, connect_status, scan_opencode,
-                        load_config, find_config, ecosystem_tasks, ecosystem_task_add)
+                        load_config, find_config, ecosystem_tasks, ecosystem_task_add,
+                        ecosystem_branch_create, ecosystem_sync_upstream,
+                        ecosystem_merge_main)
 
 try:
     from mcp.server import Server
@@ -235,6 +237,18 @@ async def handle_ecosystem_task_add(args: dict):
     )
 
 
+async def handle_ecosystem_branch_create(args: dict):
+    return ecosystem_branch_create(args["name"], base=args.get("base", "main"))
+
+
+async def handle_ecosystem_sync_upstream(args: dict):
+    return ecosystem_sync_upstream(branch=args.get("branch", "main"))
+
+
+async def handle_ecosystem_merge_main(args: dict):
+    return ecosystem_merge_main(args.get("target_branch"))
+
+
 # ─── Storage orgánico (data/) ────────────────────────────────────────────────
 
 async def handle_add_custom_pattern(args: dict):
@@ -319,6 +333,10 @@ HANDLERS = {
     # Tareas cross-cutting
     "ecosystem_tasks": handle_ecosystem_tasks,
     "ecosystem_task_add": handle_ecosystem_task_add,
+    # Operaciones git del ecosistema
+    "ecosystem_branch_create": handle_ecosystem_branch_create,
+    "ecosystem_sync_upstream": handle_ecosystem_sync_upstream,
+    "ecosystem_merge_main": handle_ecosystem_merge_main,
     # Storage orgánico
     "add_custom_pattern": handle_add_custom_pattern,
     "remove_custom_pattern": handle_remove_custom_pattern,
@@ -559,6 +577,28 @@ TOOL_DEFINITIONS = [
         "knowledge_status",
         "Reporta el estado del conocimiento por tier (built-in / knowledge / workspace / custom).",
         {},
+    ),
+    # ─── Operaciones git del ecosistema ───
+    _make_tool(
+        "ecosystem_branch_create",
+        "Crea la branch `ecosystem/{name}` desde `base` (default: main). Trazable: "
+        "registra la operación en AGENT_SESSION_LOG.",
+        {"name": {"type": "string"},
+         "base": {"type": "string", "default": "main",
+                  "description": "main (estable) | dev (bleeding edge)"}},
+        required=["name"],
+    ),
+    _make_tool(
+        "ecosystem_sync_upstream",
+        "Sincroniza una branch local con upstream (git fetch + merge). "
+        "branch='main' actualiza estable; branch='dev' actualiza bleeding edge.",
+        {"branch": {"type": "string", "default": "main", "description": "main | dev"}},
+    ),
+    _make_tool(
+        "ecosystem_merge_main",
+        "Mergea main a la branch de ecosistema (target_branch o branch actual). "
+        "Reporta archivos en conflicto si los hay.",
+        {"target_branch": {"type": "string", "default": None}},
     ),
 ]
 

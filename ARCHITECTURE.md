@@ -308,38 +308,44 @@ merge entre agentes concurrentes. Se excluyen del versionado por diseño.
 ## 11. Modelo de branches
 
 El repo es autocontenido. La separación entre lo **oficial** (público) y lo
-**específico de cada ecosistema** (privado) se hace con branches + forks:
+**específico de cada ecosistema** (privado) se hace con branches + forks. El
+upstream tiene dos ramas públicas: `main` (estable) y `dev` (integración):
 
 ```
 UPSTREAM (público)                    TU FORK (privado)
 ─────────────────────                ─────────────────────
-main                                  main (sync desde upstream)
-├── agentic_ecos/                     │
-├── agentic_ecos/knowledge/           ├── ecosystem/mi-eco
-└── docs/                             │   └── workspace/
-    (NO workspace/,                   │
-     NO ecosystem branches)           └── ecosystem/otro-cliente
-
-feature/add-pattern ← PRs
+main (estable, releases)              main (sync desde upstream/main)
+  ↑                                   │
+  └── dev (integración)               ├── ecosystem/mi-eco  ← base main (estable)
+        ↑                             │   └── workspace/
+        ├── feature/* PRs             │
+        └── knowledge/* PRs           └── (opcional: base dev para bleeding edge)
 ```
 
 **Reglas**:
-- **`main` es la única branch pública.** Contiene código + knowledge/ + docs/.
+- **`main` (estable) y `dev` (integración) son las branches públicas.** Contienen
+  código + knowledge/ + docs/. Los PRs de feature/knowledge van a `dev`; el merge
+  `dev → main` es periódico y testeado.
 - **`ecosystem/*` solo existen en forks privados.** Contienen `workspace/`
   (siempre privado).
+- **Tools MCP de git** (trazables, registran en AGENT_SESSION_LOG):
+  - `ecosystem_branch_create(name, base)` — crea tu branch de ecosistema
+    (`base=main` estable | `base=dev` bleeding edge).
+  - `ecosystem_sync_upstream(branch)` — sync de main/dev con upstream.
+  - `ecosystem_merge_main(target)` — merge de main a tu branch, reporta conflictos.
 - `git merge main` en tu branch de ecosistema trae nuevo código + knowledge/
   sin tocar tu workspace/ (0 conflictos).
 - `data/` patterns/presets se commitean (fork privado, trazabilidad). Solo
   `data/ecosystem-snapshots/` y `data/state.json` son gitignored (runtime data).
-- Contribuciones a main: patrón validado en ≥2 ecosistemas, PR desde un branch
-  limpio (sin workspace/).
+- Contribuciones al upstream: patrón validado en ≥2 ecosistemas, PR desde un
+  branch limpio (sin workspace/) a `dev`.
 
 ### Por qué fork privado siempre
 
 `workspace/` (proyectos, tareas, patrones) y `data/` (experimentos) se commitean.
 Si vivieran en un repo público, serían visibles. El diseño fuerza:
 
-- **Público** = solo `main` (código + knowledge/ + docs/)
+- **Público** = `main` + `dev` (código + knowledge/ + docs/)
 - **Privado** = todo tu ecosistema (`ecosystem/*` + `workspace/` + `data/`)
 
 Esto da **privacidad total + trazabilidad completa** sin fricción: todo se

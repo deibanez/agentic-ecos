@@ -12,6 +12,7 @@ Ubicación del config (en orden de prioridad):
 import json
 import os
 import re
+import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -712,3 +713,170 @@ def scan_opencode(workspace_root: Optional[str] = None) -> dict:
     return {"workspace_root": str(root), "projects": results,
             "connected": sum(1 for r in results if r["connected"]),
             "not_connected": sum(1 for r in results if not r["connected"])}
+
+
+# ─── Operaciones git del ecosistema (trazables) ──────────────────────────────
+
+def repo_root(config_path: Optional[str] = None) -> Path:
+    """Raíz del repo agentic-ecos (donde corre git)."""
+    return Path(__file__).resolve().parent.parent
+
+
+def _git(*args: str, cwd: Optional[Path] = None) -> dict:
+    """Ejecuta git y retorna (ok, stdout, stderr)."""
+    try:
+        r = subprocess.run(["git", *args], capture_output=True, text=True,
+                           cwd=cwd or repo_root())
+    except FileNotFoundError:
+        return {"ok": False, "error": "git no está instalado en el sistema", "stdout": "", "stderr": ""}
+    return {"ok": r.returncode == 0, "rc": r.returncode,
+            "stdout": r.stdout.strip(), "stderr": r.stderr.strip()}
+
+
+def _log_git_action(action: str, resource: str, agent_id: str = "system", details: str = ""):
+    """Registra una acción git en AGENT_SESSION_LOG del vault autodocumental."""
+    try:
+        import json as _json
+        entry = {"timestamp": utc_now(), "agent_id": agent_id, "role": "orchestrator",
+                 "action": action, "resource": resource, "status": "success", "details": details}
+        log_path = repo_root() / "docs" / "00_Global" / "AGENT_SESSION_LOG.md"
+        with open(log_path, "a") as f:
+            f.write(_json.dumps(entry) + "\n")
+    except OSError:
+        pass
+
+
+def ecosystem_branch_create(name: str, base: str = "main") -> dict:
+    """Crea la branch `ecosystem/{name}` desde `base` (default: main).
+
+    Si `workspace/` no existe, lo crea con la estructura mínima.
+    """
+    if not re.match(r"^[a-zA-Z0-9._/-]+$", name):
+        return {"ok": False, "error": "Nombre de ecosistema inválido (solo alfanumérico, . _ / -)"}
+    branch = f"ecosystem/{name}"
+
+    # Verificar que git está disponible y es un repo
+    check = _git("rev-parse", "--is-inside-work-tree")
+    if not check["ok"]:
+        return {"ok": False, "error": "No es un repositorio git o git no disponible",
+                "stderr": check.get("stderr")}
+
+    # Verificar que la branch base existe
+    exists = _git("rev-parse", "--verify", base)
+    if not exists["ok"]:
+        return {"ok": False, "error": f"Branch base '{base}' no existe. "
+                                      f"Disponibles: {_git('branch', '--list').get('stdout', '')}"}
+
+    # Verificar que la branch de ecosistema no exista ya
+    branch_exists = _git("rev-parse", "--verify", branch)
+    if branch_exists["ok"]:
+        return {"ok": False, "error": f"Branch '{branch}' ya existe. "
+                                      f"Usá ecosystem_sync_upstream o eliminá la branch."}
+
+    # Crear la branch
+    created = _git("checkout", "-b", branch, base)
+    if not created["ok"]:
+        return {"ok": False, "error": f"Error creando branch: {created.get('stderr', '')}"}
+
+    # Crear workspace/ si no existe
+    ws = repo_root() / "workspace"
+    if not ws.exists():
+        ws.mkdir(parents=True, exist_ok=True)
+        (ws / ".gitkeep").write_text("")
+
+    _log_git_action("ecosystem_branch_create", branch, details=f"base={base}")
+    return {"ok": True, "branch": branch, "base": base,
+            "workspace": str(ws),
+            "note": "Tu workspace/ vive en esta branch. Mantenela en tu fork privado."}
+
+
+def ecosystem_sync_upstream(branch: str = "main") -> dict:
+    """Sincroniza `branch` local con `upstream/{branch}` (git fetch + merge).
+
+    `branch="main"` (default): actualiza tu main estable desde upstream.
+    `branch="dev"`: actualiza tu dev (bleeding edge) desde upstream.
+    """
+    # Guardar branch actual para volver
+    cur = _git("rev-parse", "--abbrev-ref", "HEAD")
+    current = cur.get("stdout") or ""
+
+    # Verificar remote upstream
+    remotes = _git("remote")
+    if "upstream" not in remotes.get("stdout", "").split():
+        return {"ok": False, "error": "Remote 'upstream' no configurado. "
+                                      "Ejecutá: git remote add upstream <url>",
+                "remotes": remotes.get("stdout", "")}
+
+    fetch = _git("fetch", "upstream")
+    if not fetch["ok"]:
+        return {"ok": False, "error": f"git fetch upstream falló: {fetch.get('stderr', '')}"}
+
+    # Verificar que upstream/{branch} existe
+    check_remote = _git("rev-parse", "--verify", f"upstream/{branch}")
+    if not check_remote["ok"]:
+        return {"ok": False, "error": f"upstream/{branch} no existe", "branch": branch}
+
+    # Checkout de la branch objetivo
+    co = _git("checkout", branch)
+    if not co["ok"]:
+        return {"ok": False, "error": f"Error en checkout de {branch}: {co.get('stderr', '')}"}
+
+    # Merge
+    merge = _git("merge", f"upstream/{branch}")
+    status = "merged" if merge["ok"] else "conflict"
+    if merge["ok"] and "up to date" in merge.get("stdout", "").lower():
+        status = "up_to_date"
+
+    # Volver a la branch original si es distinta
+    if current and current != branch:
+        _git("checkout", current)
+
+    _log_git_action("ecosystem_sync_upstream", branch, details=f"status={status}")
+    return {
+        "ok": merge["ok"],
+        "branch": branch,
+        "status": status,
+        "detail": merge.get("stdout") or merge.get("stderr", ""),
+        "returned_to": current if current and current != branch else branch,
+    }
+
+
+def ecosystem_merge_main(target_branch: Optional[str] = None) -> dict:
+    """Mergea `main` (o `dev`) a la branch de ecosistema.
+
+    Si `target_branch` es None, usa la branch actual.
+    """
+    if target_branch is None:
+        cur = _git("rev-parse", "--abbrev-ref", "HEAD")
+        target_branch = cur.get("stdout") or ""
+    if not target_branch:
+        return {"ok": False, "error": "No se pudo determinar la branch actual"}
+
+    # Verificar que main existe
+    check = _git("rev-parse", "--verify", "main")
+    if not check["ok"]:
+        return {"ok": False, "error": "Branch 'main' no existe localmente"}
+
+    # Checkout target
+    co = _git("checkout", target_branch)
+    if not co["ok"]:
+        return {"ok": False, "error": f"Error en checkout de {target_branch}: {co.get('stderr', '')}"}
+
+    # Merge main
+    merge = _git("merge", "main")
+    conflicted = []
+    if not merge["ok"]:
+        # Detectar archivos en conflicto
+        conflicts = _git("diff", "--name-only", "--diff-filter=U")
+        conflicted = conflicts.get("stdout", "").splitlines()
+
+    _log_git_action("ecosystem_merge_main", target_branch,
+                    details=f"conflicts={len(conflicted)}")
+    return {
+        "ok": merge["ok"],
+        "target_branch": target_branch,
+        "merged_from": "main",
+        "status": "merged" if merge["ok"] else "conflict",
+        "conflicted_files": conflicted,
+        "detail": merge.get("stdout") or merge.get("stderr", ""),
+    }

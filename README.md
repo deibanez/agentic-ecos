@@ -28,17 +28,18 @@ uv add --dev mcp
 
 ## Quickstart
 
-> **Fork privado obligatorio.** Solo `main` del upstream es público (código +
-> knowledge/ + docs/). Tu ecosistema (`workspace/` + `data/`) vive en un fork
-> privado — con trazabilidad completa (`git log` de cada cambio).
-> Detalle en `CONTRIBUTING.md` §9.
+> **Fork privado obligatorio.** Solo `main` (estable) y `dev` (integración) del
+> upstream son públicos (código + knowledge/ + docs/). Tu ecosistema
+> (`workspace/` + `data/`) vive en un fork privado — con trazabilidad completa
+> (`git log` de cada cambio). Detalle en `CONTRIBUTING.md` §9.
 
 ```bash
-# 0. Crear el fork privado (una vez)
+# 0. Crear el fork privado + branch de ecosistema (una vez)
 gh repo fork usuario/agentic-ecos --clone --private
 cd agentic-ecos
 git remote add upstream https://github.com/usuario/agentic-ecos.git
-git checkout -b ecosystem/mi-eco main
+agentic-ecos ecosystem branch-create mi-eco --base main
+#   base=main (estable, recomendado) | base=dev (bleeding edge)
 
 # 1. Inicializar el plano de control (una vez por ecosistema)
 agentic-ecos ecosystem init --name mi-ecosistema --workspace ~/repos
@@ -48,11 +49,16 @@ agentic-ecos connect --target ~/repos --agent auto
 
 # 3. Desde el agente: generar infra agéntica para un proyecto
 #    → init_project("mi-proyecto", preset="monorepo", target_path=".../docs")
+
+# Mantenerse al día (trazable, registra en AGENT_SESSION_LOG)
+agentic-ecos ecosystem sync --branch main
+agentic-ecos ecosystem merge-main --target ecosystem/mi-eco
 ```
 
 > **Privacidad**: tu `workspace/` (proyectos, tareas) y `data/` (patterns en
 > experimentación) se commitean en tu fork **privado** — nadie más los ve.
-> Solo compartís lo que querés vía PR de `knowledge/` al `main` público.
+> Solo compartís lo que querés vía PR de `knowledge/` a `dev` (que luego
+> promueve a `main` cuando está estable).
 
 ## Uso con el agente (MCP)
 
@@ -102,6 +108,9 @@ agentic-ecos connect --agent snippet                 # snippets para pegar manua
 | `project_add` / `project_remove` | Registrar/eliminar proyectos del registro |
 | `connect` / `connect_status` | Configura agentic-ecos para múltiples agentes y verifica conexión |
 | `scan_opencode` | Qué proyectos tienen agentic-ecos conectado |
+| `ecosystem_branch_create` | Crea tu branch `ecosystem/{name}` desde `main` (estable) o `dev` (bleeding edge) — trazable |
+| `ecosystem_sync_upstream` | Sincroniza una branch con upstream (main/dev) — trazable |
+| `ecosystem_merge_main` | Merge de main a tu branch de ecosistema, reporta conflictos — trazable |
 
 **Tareas cross-cutting**
 | Tool | Función |
@@ -139,6 +148,11 @@ agentic-ecos ecosystem status
 agentic-ecos ecosystem add otro-svc --type frontend
 agentic-ecos ecosystem tasks
 agentic-ecos ecosystem add-task "Migrar satet" --priority high --type iac
+
+# Branches git del ecosistema (trazables)
+agentic-ecos ecosystem branch-create mi-eco --base main    # main estable | dev bleeding edge
+agentic-ecos ecosystem sync --branch main                  # sync con upstream
+agentic-ecos ecosystem merge-main --target ecosystem/mi-eco
 
 # Conectar MCP (multi-agente)
 agentic-ecos connect --target ~/repos --agent auto

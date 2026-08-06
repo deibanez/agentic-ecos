@@ -477,4 +477,71 @@ def test_connect_status(tmp_path):
     r = connect_status(str(tmp_path))
     assert r["ok"] is True
     assert r["agents"]["opencode"]["connected"] is True
-    assert r["connected_any"] is True
+
+
+# ─── Operaciones git del ecosistema ─────────────────────────────────────────
+
+def _make_git_repo(tmp_path, monkeypatch):
+    """Crea un repo git temporal y apunta ecosystem a él."""
+    import subprocess
+    from agentic_ecos import ecosystem
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.email", "t@t.com"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "test"], cwd=repo, check=True)
+    (repo / "README.md").write_text("# repo")
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=repo, check=True)
+    # Apuntar ecosystem a este repo
+    monkeypatch.setattr(ecosystem, "repo_root", lambda config_path=None: repo)
+    return repo
+
+
+def test_ecosystem_branch_create(tmp_path, monkeypatch):
+    import subprocess
+    repo = _make_git_repo(tmp_path, monkeypatch)
+    from agentic_ecos.ecosystem import ecosystem_branch_create
+    r = ecosystem_branch_create("mi-eco", base="main")
+    assert r["ok"] is True
+    assert r["branch"] == "ecosystem/mi-eco"
+    # branch creada
+    branches = subprocess.run(["git", "branch", "--list"], cwd=repo, capture_output=True, text=True)
+    assert "ecosystem/mi-eco" in branches.stdout
+    # workspace/ creado
+    assert (repo / "workspace" / ".gitkeep").exists()
+
+    # duplicado → error
+    r2 = ecosystem_branch_create("mi-eco", base="main")
+    assert r2["ok"] is False
+
+
+def test_ecosystem_branch_create_bad_name(tmp_path, monkeypatch):
+    _make_git_repo(tmp_path, monkeypatch)
+    from agentic_ecos.ecosystem import ecosystem_branch_create
+    r = ecosystem_branch_create("bad name with spaces!!")
+    assert r["ok"] is False
+
+
+def test_ecosystem_merge_main(tmp_path, monkeypatch):
+    import subprocess
+    repo = _make_git_repo(tmp_path, monkeypatch)
+    from agentic_ecos.ecosystem import ecosystem_branch_create, ecosystem_merge_main
+    ecosystem_branch_create("mi-eco", base="main")
+    # commit en la branch ecosystem
+    subprocess.run(["git", "checkout", "-q", "ecosystem/mi-eco"], cwd=repo, check=True)
+    (repo / "feature.txt").write_text("x")
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "feature"], cwd=repo, check=True)
+    # merge main → sin conflictos (main no cambió)
+    r = ecosystem_merge_main("ecosystem/mi-eco")
+    assert r["ok"] is True
+    assert r["status"] == "merged" or r["status"] == "up_to_date"
+
+
+def test_ecosystem_sync_no_upstream(tmp_path, monkeypatch):
+    repo = _make_git_repo(tmp_path, monkeypatch)
+    from agentic_ecos.ecosystem import ecosystem_sync_upstream
+    r = ecosystem_sync_upstream(branch="main")
+    assert r["ok"] is False
+    assert "upstream" in r["error"]

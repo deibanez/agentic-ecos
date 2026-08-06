@@ -54,6 +54,8 @@ across ALL projects — not just one.
 5. **Connecting the MCP server** → `connect(target, agent="auto")`
 6. **Managing cross-cutting tasks** → `ecosystem_tasks()` / `ecosystem_task_add()`
 7. **Documenting a discovered pattern** → `add_custom_pattern(...)` then promote.
+8. **Branch/fork management (traceable)** → `ecosystem_branch_create(name, base)`,
+   `ecosystem_sync_upstream(branch)`, `ecosystem_merge_main(target)`.
 
 ## Recommended flow for a NEW project
 
@@ -67,19 +69,36 @@ across ALL projects — not just one.
 ## Recommended flow for onboarding the ECOSYSTEM
 
 1. **Private fork is REQUIRED** for using agentic-ecos with your own ecosystem.
-   Only `main` is public. Guide the user to create a private fork on GitHub
-   (`gh repo fork ... --private`) BEFORE proceeding. The `workspace/` and `data/`
-   patterns will be committed there — not in any public repo.
+   Only `main` (stable) and `dev` (integration) are public. Guide the user to
+   create a private fork on GitHub (`gh repo fork ... --private`) BEFORE
+   proceeding. The `workspace/` and `data/` patterns will be committed there —
+   not in any public repo.
    See CONTRIBUTING.md §9 for the full flow.
-2. `ecosystem_init(name, workspace_root)` — detect existing projects.
-3. `ecosystem_status()` — see which projects lack agentic infra.
-4. For each gap: `init_project(...)` or `project_add(...)`.
-5. `connect()` on the workspace to make agentic-ecos available everywhere.
+2. **Create the ecosystem branch** → `ecosystem_branch_create(name, base)`.
+   Ask the user: `base="main"` (stable, default, recommended) or `base="dev"`
+   (bleeding edge, follows upstream development closely).
+3. `ecosystem_init(name, workspace_root)` — detect existing projects.
+4. `ecosystem_status()` — see which projects lack agentic infra.
+5. For each gap: `init_project(...)` or `project_add(...)`.
+6. `connect()` on the workspace to make agentic-ecos available everywhere.
+
+### Branch/fork guidance for agents
+
+- **Upstream**: `main` = stable releases, `dev` = integration. Feature and
+  knowledge PRs go to `dev`, not `main`. `dev → main` merge is periodic/tested.
+- **Ecosystem branches** (`ecosystem/*`) live ONLY in the private fork. Create
+  them with `ecosystem_branch_create(name, base)` — traceable (logged with T-ID).
+- **Keeping up to date**: `ecosystem_sync_upstream(branch="main"|"dev")` syncs
+  your local branch from upstream. `ecosystem_merge_main(target)` merges main
+  into your ecosystem branch and reports conflicts.
+- **Contributions to upstream**: always from a clean branch off `dev` (never
+  from a branch containing `workspace/`).
 
 ### Privacy guidance for agents
 
-- **Only `main` is public.** Code, `knowledge/` and docs live there. Your
-  ecosystem (`workspace/`, `data/` patterns/presets) lives in a **private fork**.
+- **Only `main` and `dev` are public.** Code, `knowledge/` and docs live there.
+  Your ecosystem (`workspace/`, `data/` patterns/presets) lives in a **private
+  fork**.
 - `workspace/` (projects registry, tasks.md, patterns) is committed in the
   ecosystem branch → **private** because the fork is private.
 - `agentic_ecos/data/patterns-custom.json` and `data/presets-custom.json` are

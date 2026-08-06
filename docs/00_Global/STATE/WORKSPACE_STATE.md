@@ -37,6 +37,7 @@ purpose: Estado del desarrollo de agentic-ecos
 | 7 | Tareas cross-cutting + multi-agente | ✅ | ecosystem_tasks + connect auto |
 | 8 | CONTRIBUTING.md (flujo documentado) | ✅ | forking, upgrade, ciclo conocimiento |
 | 9 | Privacidad con fork privado | ✅ | documentado en CONTRIBUTING §9 + README + ARCHITECTURE + instructions |
+| 10 | Tools git del ecosistema + rama dev | ✅ | ecosystem_branch_create/sync/merge_main + dev en upstream |
 
 ---
 

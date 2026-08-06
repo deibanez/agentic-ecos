@@ -36,6 +36,9 @@ purpose: Log de auditoría append-only de acciones de agentes (JSONL)
 | `session_close` | Cierre de sesión |
 | `task_add` | Alta de tarea |
 | `mark_zombie` | Sesión marcada como zombie por cleanup |
+| `ecosystem_branch_create` | Creación de branch `ecosystem/{name}` |
+| `ecosystem_sync_upstream` | Sync de una branch con upstream |
+| `ecosystem_merge_main` | Merge de main a la branch de ecosistema |
 
 ---
 
