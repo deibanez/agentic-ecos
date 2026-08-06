@@ -30,6 +30,9 @@ canonical: true
 - [x] T12: Automatización CI/CD con LLMs (CLI --json, llm.py, 5 workflows, task_loop) [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
 - [x] T13: Cerrar gap de ciclo de vida de tareas + auto-contexto MCP + README agnóstico [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
 - [x] T14: Unificar onboarding en flujo único fork privado (Quickstart simplificado) [priority:: medium] [status:: done] [type:: docs] [repo:: agentic-ecos]
+- [x] T15: Curar 13 traps universales de agv-docs + 2 patrones + protocolos enriquecidos [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
+- [x] T16: Inyectar _context (ecosistema + tareas + conocimiento) en cada respuesta MCP [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
+- [x] T17: Home.md dinámico + suggestions en _context [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
 
 <!-- TASKS_END -->
 

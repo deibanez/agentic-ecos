@@ -127,6 +127,7 @@ for `docs`/`ops` tasks. Not needed for daily agent work — see
 | Feature | What it does |
 |---------|-------------|
 | **Auto-context on connect** | The agent receives instructions in the MCP handshake — no need to memorize the 37 tools. `connect` also adds `instructions.md` to the workspace config |
+| **Live context in every response** | Every MCP tool response carries `_context` with ecosystem summary, task backlog and knowledge state — the agent always has the current pulse without extra calls |
 | **Local-first task lifecycle** | Add/claim/done with race-free git push rejection. Every action traced with a T-ID |
 | **4-tier knowledge** | Patterns grow: personal → ecosystem → community → built-in |
 | **LLM-agnostic** | DeepSeek, GPT, Claude, Ollama — any provider. Works without LLM too (graceful degradation) |
