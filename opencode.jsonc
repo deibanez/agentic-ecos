@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["docs/00_Global/AGENTS.md"],
+  "mcp": {
+    "agentic-ecos": {
+      "type": "local",
+      "command": ["uv", "run", "--directory", ".", "agentic_ecos/server.py"]
+    }
+  }
+}

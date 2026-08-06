@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.venv/
+.locks/
+*.lock.tmp_*
+
+# Runtime data — SIEMPRE gitignored.
+# Snapshots automáticos de ecosystem_status y estado interno del MCP.
+# No contienen conocimiento estructurado y generan conflictos de merge.
+agentic_ecos/data/ecosystem-snapshots/
+agentic_ecos/data/state.json
+agentic_ecos/data/*.tmp
+
+# Nota: data/patterns-custom.json y data/presets-custom.json NO están en el
+# gitignore — se commitean en el fork privado para trazabilidad completa del
+# ciclo de descubrimiento de conocimiento.
