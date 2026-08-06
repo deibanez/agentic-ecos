@@ -281,6 +281,5 @@ docs/00_Global/      # vault autodocumental (Obsidian)
 
 ## Roadmap
 
-- [ ] Extracción de patrones desde agv-docs (upgrade unidireccional)
 - [ ] Task loop scheduling (actualmente solo `workflow_dispatch`)
 - [ ] RAG opt-in para vaults grandes
