@@ -1,0 +1,15 @@
+{
+  "name": "ci_step_ordering",
+  "domain": "ci_cd",
+  "title": "'git add <path>' before path exists causes 'fatal: pathspec'",
+  "symptom": "A CI step fails with 'fatal: pathspec' even though the file is generated later in the pipeline",
+  "cause": "The commit step runs before the step that generates the file it tries to add",
+  "fix": "Reorder steps: generate the artifact FIRST, then commit it. Verify the file exists before git add.",
+  "mal_code": "# commit step before generation step\n- name: Commit\n  run: git add docs/report.md  # file not created yet",
+  "good_code": "- name: Generate report\n  run: python gen.py\n- name: Commit\n  run: git add docs/report.md",
+  "origin": "agv-docs/IAC_TRAPS.md (step ordering trap)",
+  "universal": true,
+  "clouds": [
+    "all"
+  ]
+}

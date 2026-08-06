@@ -1,0 +1,15 @@
+{
+  "name": "api_rate_limit_timeout",
+  "domain": "api",
+  "title": "API calls without rate limiting cause secondary rate limit and timeout",
+  "symptom": "Batches of sequential API calls hang or fail with rate limit errors",
+  "cause": "Making many rapid requests without throttling triggers the provider's secondary rate limit",
+  "fix": "Add a small delay between calls, use exponential backoff on 429/503, and batch requests where supported",
+  "mal_code": "for item in items:\n    api.get(item)  # 65+ rapid calls, no delay",
+  "good_code": "for item in items:\n    api.get(item)\n    time.sleep(0.1)  # rate-limit friendly",
+  "origin": "agv-docs/IAC_TRAPS.md (API rate limit trap)",
+  "universal": true,
+  "clouds": [
+    "all"
+  ]
+}

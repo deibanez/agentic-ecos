@@ -1,0 +1,15 @@
+{
+  "name": "yaml_python_inline",
+  "domain": "ci_cd",
+  "title": "YAML interprets ':' inside Python strings as mapping syntax",
+  "symptom": "Inline Python in YAML steps silently mis-parses or fails, often only in certain values",
+  "cause": "YAML treats ':' followed by space as a key:value separator, even inside what looks like a string",
+  "fix": "Quote the whole block, use a here-doc, or move the Python to a script file",
+  "mal_code": "run: python -c \"print({'a': 1})\"  # ':' breaks parsing",
+  "good_code": "run: |\n  python - <<'EOF'\n  print({'a': 1})\n  EOF",
+  "origin": "agv-docs/IAC_TRAPS.md (YAML+Python inline trap)",
+  "universal": true,
+  "clouds": [
+    "all"
+  ]
+}

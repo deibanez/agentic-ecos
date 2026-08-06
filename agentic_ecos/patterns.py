@@ -249,6 +249,39 @@ PATTERNS: list[dict] = [
         "en": "Codified traps turn past failures into institutional knowledge.",
         "es": "Los traps codificados convierten fallos pasados en conocimiento institucional.",
     },
+    {
+        "name": "mode_switching",
+        "domain": "knowledge",
+        "description": "Classify the task into an operating mode (DATA/CODE/INFRA/CI-CD/DOCS) before reading any files, with mode-specific reading minimums and anti-patterns.",
+        "when_to_use": "Agent tasks span multiple domains; reading the wrong files wastes tokens and leads to incorrect diagnoses.",
+        "implementation_guide": [
+            "Classify mode from request keywords BEFORE any file reads: DATA (serials, dates, migration verbs), CODE (modify .py/tests), INFRA (modify .tf/deploy), CI/CD (audit workflows), DOCS (write docs/skills)",
+            "Each mode has a mandatory reading list (max N files) and a prohibited-actions list",
+            "DATA mode: never grep code for data; read skill file → function signature → execute",
+            "CODE mode: never query runtime data; read tribal knowledge → models → tests → Makefile",
+            "INFRA mode: never edit app logic; read IAC_TRAPS → standards → main.tf",
+            "Cross-mode tasks: execute sequentially, not simultaneously",
+        ],
+        "related": ["protocol_writing", "trap_documentation"],
+        "en": "Mode classification prevents the most common token-wasting anti-pattern: reading the wrong files for the task domain.",
+        "es": "La clasificación por modo previene el anti-patrón más común de gasto de tokens: leer los archivos incorrectos para el dominio de la tarea.",
+    },
+    {
+        "name": "error_recovery",
+        "domain": "coordination",
+        "description": "Structured symptom-to-action lookup table for operational error recovery across agents.",
+        "when_to_use": "Agents encounter operational errors (deploy failures, lock conflicts, CI/CD failures, deadlocks) and need deterministic recovery actions.",
+        "implementation_guide": [
+            "Maintain a recovery table: | Symptom | Action | — eg: deploy fails post-merge → rollback, fix, re-deploy",
+            "Each entry requires: specific error message pattern, confirmation steps, recovery action, verification step",
+            "Stale lock → reclaim automatically (heartbeat > TTL); deadlock → release all, wait 30s, retry in order",
+            "CI/CD fail → check workflow audit, identify root cause, fix, re-trigger",
+            "Production fail → rollback PR, apply previous version, notify in comms with escalation label",
+        ],
+        "related": ["lock_system", "trap_documentation", "session_audit"],
+        "en": "A structured recovery table prevents agents from improvising fixes under pressure.",
+        "es": "Una tabla de recuperación estructurada evita que los agentes improvisen fixes bajo presión.",
+    },
 ]
 
 
@@ -265,6 +298,7 @@ def list_patterns(domain: Optional[str] = None) -> list[dict]:
     all_patterns = (
         PATTERNS                                    # tier 1: built-in
         + storage.load_knowledge_patterns()         # tier 2: committed community
+        + storage.load_knowledge_traps()             # tier 2: committed traps
         + storage.load_workspace_patterns()          # tier 2.5: ecosystem branch
         + storage.load_custom_patterns()             # tier 3: personal gitignored
     )

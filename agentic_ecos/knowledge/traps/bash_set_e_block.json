@@ -1,0 +1,15 @@
+{
+  "name": "bash_set_e_block",
+  "domain": "bash",
+  "title": "'set +e' needed at block start in CI scripts with continue-on-error",
+  "symptom": "A CI step dies mid-script even though the next command should have run",
+  "cause": "GitHub Actions runs with bash -e (exit on error). A command without '||' kills the step",
+  "fix": "Use 'set +e' at the start of a protected block, or ensure every fallible command uses '||'",
+  "mal_code": "aws rds describe-db-instances  # fails → step dies",
+  "good_code": "set +e\naws rds describe-db-instances 2>/dev/null\necho 'continues always'",
+  "origin": "agv-docs/AGENTS.md trap 8",
+  "universal": true,
+  "clouds": [
+    "all"
+  ]
+}
