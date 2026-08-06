@@ -19,7 +19,8 @@ dev = [
 ]
 
 [project.scripts]
-agentic-ecos = "agentic_ecos.server:main"
+agentic-ecos = "agentic_ecos.generator:main"
+agentic-ecos-server = "agentic_ecos.server:main"
 
 [build-system]
 requires = ["hatchling"]

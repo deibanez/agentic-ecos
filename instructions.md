@@ -45,16 +45,32 @@ across ALL projects — not just one.
 - `promote_to_knowledge(name, source, kind)` → `knowledge/` (tier 2, committed, PR to main)
 - `knowledge_status()` — state of knowledge per tier.
 
+## Two modes of operation
+
+agentic-ecos has two levels of use:
+
+**Mode 1 — MCP tools (no ecosystem needed).** Works immediately after the
+server is connected. No private fork, no registry required:
+- `init_project(...)` — bootstrap agentic infra in a project.
+- `validate_structure(...)` / `agentic_health(...)` — check coverage.
+- `list_patterns()` / `get_pattern()` / `list_protocols()` — consult knowledge.
+- `generate_file(...)` — generate a single template.
+
+**Mode 2 — Ecosystem management (requires private fork).** For multi-project
+coordination with canonical registry, cross-cutting tasks, and traceable
+branch/fork operations. Setup is documented in CONTRIBUTING.md §10.
+
 ## When to use
 
-1. **Bootstrap the ecosystem** → `ecosystem_init(name, workspace_root)`
-2. **Starting a new project** → `init_project(name, preset, target_path)`
-3. **Registering an existing project** → `project_add(...)`
-4. **Checking ecosystem health** → `ecosystem_status()`
-5. **Connecting the MCP server** → `connect(target, agent="auto")`
-6. **Managing cross-cutting tasks** → `ecosystem_tasks()` / `ecosystem_task_add()`
-7. **Documenting a discovered pattern** → `add_custom_pattern(...)` then promote.
-8. **Branch/fork management (traceable)** → `ecosystem_branch_create(name, base)`,
+1. **Bootstrap a single project (no ecosystem)** → `init_project(...)`
+2. **Bootstrap the ecosystem** → `ecosystem_init(name, workspace_root)`
+3. **Starting a new project** → `init_project(name, preset, target_path)`
+4. **Registering an existing project** → `project_add(...)`
+5. **Checking ecosystem health** → `ecosystem_status()`
+6. **Connecting the MCP server** → `connect(target, agent="auto")`
+7. **Managing cross-cutting tasks** → `ecosystem_tasks()` / `ecosystem_task_add()`
+8. **Documenting a discovered pattern** → `add_custom_pattern(...)` then promote.
+9. **Branch/fork management (traceable)** → `ecosystem_branch_create(name, base)`,
    `ecosystem_sync_upstream(branch)`, `ecosystem_merge_main(target)`.
 
 ## Recommended flow for a NEW project
@@ -73,7 +89,7 @@ across ALL projects — not just one.
    create a private fork on GitHub (`gh repo fork ... --private`) BEFORE
    proceeding. The `workspace/` and `data/` patterns will be committed there —
    not in any public repo.
-   See CONTRIBUTING.md §9 for the full flow.
+   See CONTRIBUTING.md §10 for the full flow.
 2. **Create the ecosystem branch** → `ecosystem_branch_create(name, base)`.
    Ask the user: `base="main"` (stable, default, recommended) or `base="dev"`
    (bleeding edge, follows upstream development closely).

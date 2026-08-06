@@ -23,9 +23,11 @@ canonical: true
 - [ ] T5: Documentar flujo de migración de data/ entre máquinas [priority:: medium] [status:: backlog] [type:: docs] [repo:: agentic-ecos]
 - [x] T6: Implementar conocimiento 4-tier + branches + tasks cross-cutting + connect multi-agente [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
 - [x] T7: Escribir CONTRIBUTING.md (flujo de forking, upgrade, ciclo del conocimiento) [priority:: medium] [status:: done] [type:: docs] [repo:: agentic-ecos]
-- [x] T8: Documentar flujo de fork privado para privacidad (CONTRIBUTING §9, README, ARCHITECTURE, instructions, AGENTS) [priority:: medium] [status:: done] [type:: docs] [repo:: agentic-ecos]
+- [x] T8: Documentar flujo de fork privado para privacidad (CONTRIBUTING §10, README, ARCHITECTURE, instructions, AGENTS) [priority:: medium] [status:: done] [type:: docs] [repo:: agentic-ecos]
 - [x] T9: Refinar modelo: solo main público, ecosystem/* en forks privados, data/ patterns/presets commiteados [priority:: medium] [status:: done] [type:: docs] [repo:: agentic-ecos]
 - [x] T10: Tools MCP de git (branch_create, sync_upstream, merge_main) + rama dev en upstream [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
+- [x] T11: Simplificar instalación (clone-and-run) + entry points CLI/server + connect usa venv [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
+- [x] T12: Automatización CI/CD con LLMs (CLI --json, llm.py, 5 workflows, task_loop) [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
 
 <!-- TASKS_END -->
 

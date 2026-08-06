@@ -525,11 +525,36 @@ def main():
 
     p_validate = sub.add_parser("validate", help="Valida la estructura agéntica de un proyecto.")
     p_validate.add_argument("path")
+    p_validate.add_argument("--json", action="store_true", help="Salida JSON para scripts")
 
     p_patterns = sub.add_parser("patterns", help="Lista los patrones agénticos disponibles.")
     p_patterns.add_argument("--domain", default=None)
+    p_patterns.add_argument("--json", action="store_true", help="Salida JSON para scripts")
 
     p_protocols = sub.add_parser("protocols", help="Lista los protocolos disponibles.")
+    p_protocols.add_argument("--json", action="store_true", help="Salida JSON para scripts")
+
+    p_knowledge = sub.add_parser("knowledge", help="Estado del conocimiento por tier.")
+    p_knowledge_sub = p_knowledge.add_subparsers(dest="knowledge_command", required=True)
+    p_knowledge_status = p_knowledge_sub.add_parser("status", help="Estado por tier.")
+    p_knowledge_status.add_argument("--json", action="store_true", help="Salida JSON para scripts")
+
+    p_llm = sub.add_parser("llm-test", help="Verifica la conexión con el LLM configurado.")
+    p_llm.add_argument("--prompt", default="Responde con OK si me lees.",
+                       help="Prompt de prueba")
+    p_llm.add_argument("--json", action="store_true", help="Salida JSON para scripts")
+
+    p_loop = sub.add_parser("task-loop", help="Ejecuta el desarrollo continuo de tareas (Task Loop).")
+    p_loop.add_argument("--task-id", default=None, help="T-ID específica (E1, T5) o vacío para la primera disponible")
+    p_loop.add_argument("--type-filter", default="docs,ops",
+                        help="Tipos permitidos cuando no se da task-id (ej: docs,ops)")
+    p_loop.add_argument("--max-iterations", type=int, default=3, help="Máx iteraciones por tarea")
+    p_loop.add_argument("--confirm", action="store_true",
+                        help="Permite tipos riesgosos (feature/bug/iac)")
+    p_loop.add_argument("--execute", action="store_true",
+                        help="Ejecuta cambios reales (sin este flag, solo dry-run)")
+    p_loop.add_argument("--tasks-file", default=None, help="Archivo de tareas (default: workspace/tasks.md)")
+    p_loop.add_argument("--json", action="store_true", help="Salida JSON para scripts")
 
     p_eco = sub.add_parser("ecosystem", help="Gestiona el plano de control (agentic.toml).")
     p_eco_sub = p_eco.add_subparsers(dest="eco_command", required=True)
@@ -542,6 +567,7 @@ def main():
     p_eco_init.add_argument("--config", default=None, help="Ruta del agentic.toml")
     p_eco_status = p_eco_sub.add_parser("status", help="Reporte de salud del ecosistema.")
     p_eco_status.add_argument("--config", default=None)
+    p_eco_status.add_argument("--json", action="store_true", help="Salida JSON para scripts")
     p_eco_add = p_eco_sub.add_parser("add", help="Registra un proyecto.")
     p_eco_add.add_argument("name")
     p_eco_add.add_argument("--type", default="backend")
@@ -550,6 +576,7 @@ def main():
     p_eco_add.add_argument("--config", default=None)
     p_eco_tasks = p_eco_sub.add_parser("tasks", help="Muestra las tareas del ecosistema.")
     p_eco_tasks.add_argument("--config", default=None)
+    p_eco_tasks.add_argument("--json", action="store_true", help="Salida JSON para scripts")
     p_eco_addtask = p_eco_sub.add_parser("add-task", help="Agrega una tarea cross-cutting.")
     p_eco_addtask.add_argument("description")
     p_eco_addtask.add_argument("--priority", default="medium")
@@ -580,6 +607,14 @@ def main():
 
     args = parser.parse_args()
 
+    def _out(data, json_flag=False):
+        """Imprime output humano o JSON según el flag --json."""
+        if json_flag:
+            import json as _json
+            print(_json.dumps(data, indent=2, ensure_ascii=False, default=str))
+            return True
+        return False
+
     if args.command == "ecosystem":
         from .ecosystem import ecosystem_init, ecosystem_status, project_add
         if args.eco_command == "init":
@@ -592,6 +627,8 @@ def main():
             return 0
         if args.eco_command == "status":
             s = ecosystem_status(args.config)
+            if _out(s, args.json):
+                return 0
             print(f"Ecosistema: {s['ecosystem'].get('name', '—')}")
             print(f"  proyectos: {s['projects_count']} "
                   f"({s['with_agentic_infra']} con infra, {s['without_agentic_infra']} sin)")
@@ -609,6 +646,8 @@ def main():
         if args.eco_command == "tasks":
             from .ecosystem import ecosystem_tasks
             t = ecosystem_tasks(args.config)
+            if _out(t, args.json):
+                return 0
             print(f"Cross-cutting: {t['cross_cutting_count']} "
                   f"(backlog {t['cross_cutting_backlog']}) · backlog total ecosistema: {t['ecosystem_backlog']}")
             for task in t["cross_cutting"]:
@@ -697,6 +736,8 @@ def main():
 
     if args.command == "validate":
         v = validate_structure(args.path)
+        if _out(v, args.json):
+            return 0
         print(f"Cobertura: {v['coverage_pct']}% ({len(v['present'])}/{v['total_required']})")
         if v["missing"]:
             print("❌ Faltan:")
@@ -708,13 +749,72 @@ def main():
 
     if args.command == "patterns":
         from .patterns import list_patterns
-        for p in list_patterns(args.domain):
+        patterns = list_patterns(args.domain)
+        if _out(patterns, args.json):
+            return 0
+        for p in patterns:
             print(f"- {p['name']} [{p['domain']}] — {p['description']}")
         return 0
 
     if args.command == "protocols":
+        if _out(sorted(PROTOCOLS), args.json):
+            return 0
         for name in sorted(PROTOCOLS):
             print(f"- {name}")
+        return 0
+
+    if args.command == "knowledge":
+        from .knowledge import knowledge_status
+        k = knowledge_status()
+        if _out(k, args.json):
+            return 0
+        for key, val in k.items():
+            print(f"  {key}: {val}")
+        return 0
+
+    if args.command == "llm-test":
+        from .llm import synthesize, DEFAULT_PROMPTS
+        import os
+        r = synthesize({"test": True}, role="echo",
+                       prompt=args.prompt, model=os.environ.get("LLM_MODEL"),
+                       api_key=os.environ.get("LLM_API_KEY"),
+                       base_url=os.environ.get("LLM_BASE_URL"))
+        if _out(r, args.json):
+            return 0 if r.get("ok") else 1
+        if not r.get("ok"):
+            print(f"❌ {r.get('error', 'error')}")
+            return 1
+        print(f"✅ LLM OK ({r.get('model', '?')}):")
+        print(r.get("text", ""))
+        return 0
+
+    if args.command == "task-loop":
+        from .task_loop import run_loop
+        from pathlib import Path
+        tasks_file = Path(args.tasks_file) if args.tasks_file else None
+        r = run_loop(task_id=args.task_id,
+                     type_filter=args.type_filter,
+                     max_iterations=args.max_iterations,
+                     confirm=args.confirm,
+                     dry_run=not args.execute,
+                     tasks_file=tasks_file)
+        if _out(r, args.json):
+            return 0 if r.get("ok") else 1
+        if not r.get("ok"):
+            print(f"❌ {r.get('error', 'error')}")
+            return 1
+        mode = "DRY-RUN" if r.get("dry_run") else "EXECUTE"
+        print(f"🔁 Task Loop [{mode}] — agente: {r.get('agent_id')}")
+        print(f"   archivo: {r.get('tasks_file')}")
+        for res in r.get("results", []):
+            mark = "✅" if res.get("status") == "done" else "⛔"
+            print(f"  {mark} {res['task_id']}: {res.get('label', '')} → {res.get('status')}")
+            if res.get("risk"):
+                print(f"     riesgo: {res['risk']} | plan: {res.get('plan_source', '?')}")
+            if res.get("error"):
+                print(f"     error: {res['error']}")
+        if not r.get("results") and r.get("note"):
+            print(f"   {r['note']}")
         return 0
 
     return 1

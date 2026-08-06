@@ -1,0 +1,84 @@
+name: task-automation
+
+# Task Loops — desarrollo continuo automático con control humano.
+# MVP: solo workflow_dispatch (el humano o un agente lo dispara).
+# Fase 2: puede agregarse repository_dispatch.
+# Fase 3: schedule diario con type_filter=docs,ops (tipos seguros).
+
+on:
+  workflow_dispatch:
+    inputs:
+      task_id:
+        description: "T-ID específica (E1, T5) o vacío para la primera disponible"
+        required: false
+        default: ""
+      type_filter:
+        description: "Tipos permitidos (docs,ops seguros; feature,bug,iac requieren confirm)"
+        required: false
+        default: "docs,ops"
+      max_iterations:
+        description: "Máximo de iteraciones por tarea"
+        required: false
+        default: "3"
+      confirm:
+        description: "Permitir tipos riesgosos (feature/bug/iac)"
+        required: false
+        default: "false"
+        type: boolean
+      execute:
+        description: "Ejecutar cambios reales (sin marcar = dry-run)"
+        required: false
+        default: "false"
+        type: boolean
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: task-loop-${{ github.event.inputs.task_id || 'auto' }}
+  cancel-in-progress: false
+
+env:
+  LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+  LLM_MODEL: ${{ secrets.LLM_MODEL || 'deepseek-chat' }}
+  LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+
+jobs:
+  loop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install agentic-ecos
+        run: |
+          pip install --quiet mcp
+          pip install --quiet --editable .
+
+      - name: Run task loop
+        id: loop
+        env:
+          CONFIRM_FLAG: ${{ github.event.inputs.confirm == 'true' && '--confirm' || '' }}
+          EXECUTE_FLAG: ${{ github.event.inputs.execute == 'true' && '--execute' || '' }}
+        run: |
+          agentic-ecos task-loop \
+            --task-id "${{ github.event.inputs.task_id }}" \
+            --type-filter "${{ github.event.inputs.type_filter }}" \
+            --max-iterations "${{ github.event.inputs.max_iterations }}" \
+            $CONFIRM_FLAG $EXECUTE_FLAG \
+            --json > /tmp/task-loop.json
+
+      - name: Show result
+        run: cat /tmp/task-loop.json
+
+      - name: Commit loop artifacts (si dry-run no, los cambios ya están)
+        if: github.event.inputs.execute == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "task-loop: procesadas $(date -u +%Y-%m-%dT%H:%M:%SZ) [bot:: task-loop]"
+          commit_user_name: agentic-ecos bot
+          commit_user_email: bot@agentic-ecos

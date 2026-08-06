@@ -22,22 +22,57 @@ Instalar una vez, conectar desde todos tus proyectos.
 ## Instalación
 
 ```bash
+# 1. Clonar el repo (una vez)
+git clone https://github.com/deibanez/agentic-ecos.git
 cd agentic-ecos
+
+# 2. Instalar dependencias + el CLI
 uv add --dev mcp
+uv pip install --editable .     # instala el comando `agentic-ecos` (CLI)
+
+# 3. Verificar que funciona
+agentic-ecos protocols           # lista las plantillas de protocolos
+
+# 4. Conectar el MCP server a tu agente (una vez por workspace)
+#    → escribe opencode.jsonc / .mcp.json / .cursor/mcp.json automáticamente
+agentic-ecos connect --target ~/repos --agent auto
 ```
 
+> **Dos comandos**:
+> - `agentic-ecos` → CLI (init, ecosystem, connect, promote, ...)
+> - `agentic-ecos-server` → arranca el MCP server (para conectarlo manualmente
+>   a un agente si no usás la tool `connect`)
+
 ## Quickstart
+
+### Paso 1 — Probar las tools (sin ecosistema, 30 segundos)
+
+Las tools MCP funcionan **inmediatamente** tras conectar el server. No necesitás
+fork privado ni registro de ecosistema para esto:
+
+```bash
+# Desde tu agente (con el MCP conectado):
+#   init_project("mi-proyecto", preset="monorepo", target_path=".../docs")
+#   list_patterns()          → los 15 patrones agénticos
+#   validate_structure("...") → verifica cobertura agéntica de un proyecto
+#   protocol_template("agent_protocol") → plantilla de protocolo
+```
+
+### Paso 2 — Crear tu ecosistema (opcional, avanzado)
+
+Para gestionar **múltiples proyectos** con registro canónico, tareas
+cross-cutting y coordinación multi-agente:
 
 > **Fork privado obligatorio.** Solo `main` (estable) y `dev` (integración) del
 > upstream son públicos (código + knowledge/ + docs/). Tu ecosistema
 > (`workspace/` + `data/`) vive en un fork privado — con trazabilidad completa
-> (`git log` de cada cambio). Detalle en `CONTRIBUTING.md` §9.
+> (`git log` de cada cambio). Detalle en `CONTRIBUTING.md` §10.
 
 ```bash
 # 0. Crear el fork privado + branch de ecosistema (una vez)
-gh repo fork usuario/agentic-ecos --clone --private
+gh repo fork deibanez/agentic-ecos --clone --private
 cd agentic-ecos
-git remote add upstream https://github.com/usuario/agentic-ecos.git
+git remote add upstream https://github.com/deibanez/agentic-ecos.git
 agentic-ecos ecosystem branch-create mi-eco --base main
 #   base=main (estable, recomendado) | base=dev (bleeding edge)
 
@@ -68,7 +103,7 @@ Conecta el server a cualquier proyecto (en su `opencode.jsonc`):
 "mcp": {
   "agentic-ecos": {
     "type": "local",
-    "command": ["uv", "run", "--directory", "/abs/path/to/agentic-ecos", "agentic_ecos/server.py"]
+    "command": ["/abs/path/to/agentic-ecos/.venv/bin/agentic-ecos-server"]
   }
 }
 ```
@@ -82,7 +117,7 @@ agentic-ecos connect --agent claude                  # solo Claude Code
 agentic-ecos connect --agent snippet                 # snippets para pegar manual
 ```
 
-### Tools (31)
+### Tools (34)
 
 **Generación y patrones**
 | Tool | Función |
@@ -161,6 +196,16 @@ agentic-ecos connect --agent claude
 # Conocimiento
 agentic-ecos promote mi-pattern --to workspace
 agentic-ecos promote mi-pattern --to knowledge --source workspace
+agentic-ecos knowledge status                 # estado por tier
+
+# Salida JSON para scripts/CI (automatización)
+agentic-ecos ecosystem status --json
+agentic-ecos ecosystem tasks --json
+agentic-ecos validate ./ruta --json
+agentic-ecos knowledge status --json
+
+# Verificar conexión LLM (optativo)
+agentic-ecos llm-test --prompt "Hola"
 
 # Listar patrones / protocolos
 agentic-ecos patterns --domain coordination
@@ -181,6 +226,30 @@ YAGNI por defecto. El vault de proyectos pequeños se consulta con wiki links
 ```bash
 pip install 'agentic-ecos[rag]'
 ```
+
+## Automatización CI/CD con LLMs (opcional)
+
+agentic-ecos puede automatizar flujos periódicos con GitHub Actions y síntesis
+LLM: resúmenes semanales, propuestas de tareas, verificación de PRs, revisión
+de conocimiento y task loops. **Opt-in** — la infraestructura funciona sin esto.
+
+**Requisitos** (GitHub → Settings → Secrets → Actions):
+
+| Secret | Requerido | Descripción |
+|--------|:---:|-----------|
+| `LLM_API_KEY` | ✅ | API key del provider |
+| `LLM_MODEL` | ⏸️ | Default `deepseek-chat`. Ej: `gpt-4o`, `claude-3-5-sonnet` |
+| `LLM_BASE_URL` | ⏸️ | Solo para providers custom |
+
+**Workflows incluidos** (`.github/workflows/`): `ecosystem-snapshot` (daily),
+`weekly-summary` (lunes), `pre-dev-verification` (on PR → dev),
+`knowledge-review` (mensual), `task-automation` (workflow_dispatch).
+
+**Degradación elegante**: sin `LLM_API_KEY`, los workflows commitean los datos
+crudos sin síntesis y crean issues mínimos. El sistema nunca falla por LLM no
+configurado.
+
+Ver `CONTRIBUTING.md` §9 para detalle completo.
 
 ## Conocimiento (4 tiers)
 

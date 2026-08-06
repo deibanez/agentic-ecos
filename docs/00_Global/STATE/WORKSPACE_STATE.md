@@ -36,8 +36,10 @@ purpose: Estado del desarrollo de agentic-ecos
 | 6 | Conocimiento 4-tier + branches | ✅ | knowledge/ + workspace/ + promote |
 | 7 | Tareas cross-cutting + multi-agente | ✅ | ecosystem_tasks + connect auto |
 | 8 | CONTRIBUTING.md (flujo documentado) | ✅ | forking, upgrade, ciclo conocimiento |
-| 9 | Privacidad con fork privado | ✅ | documentado en CONTRIBUTING §9 + README + ARCHITECTURE + instructions |
+| 9 | Privacidad con fork privado | ✅ | documentado en CONTRIBUTING §10 + README + ARCHITECTURE + instructions |
 | 10 | Tools git del ecosistema + rama dev | ✅ | ecosystem_branch_create/sync/merge_main + dev en upstream |
+| 11 | Instalación simplificada (clone-and-run) | ✅ | entry points agentic-ecos (CLI) + agentic-ecos-server, connect usa venv |
+| 12 | Automatización CI/CD con LLMs | ✅ | CLI --json, llm.py (agnóstico), 5 workflows, task_loop (H1-H3) |
 
 ---
 

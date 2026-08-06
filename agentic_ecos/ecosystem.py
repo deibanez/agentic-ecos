@@ -530,6 +530,22 @@ def _insert_mcp_entry(jsonc: str, server_name: str, payload: dict) -> str:
     return prefix + "\n    " + inner + "\n  " + jsonc[k:]
 
 
+def _server_command(ap: str) -> tuple[list[str], Optional[dict]]:
+    """Resuelve el comando MCP del server.
+
+    Prioridad:
+      1. Entry point del venv: {repo}/.venv/bin/agentic-ecos-server
+      2. Fallback: uv run --directory {repo} agentic_ecos/server.py
+
+    Retorna (command, env_opts) donde env_opts se aplica a opencode (que acepta env).
+    """
+    import os as _os
+    venv_bin = Path(ap) / ".venv" / "bin" / "agentic-ecos-server"
+    if venv_bin.exists() and _os.access(venv_bin, _os.X_OK):
+        return [str(venv_bin)], None
+    return ["uv", "run", "--directory", ap, "agentic_ecos/server.py"], None
+
+
 # Configuración MCP por agente (dónde vive el config y su formato de entrada)
 AGENT_MCP_CONFIGS = {
     "opencode": {
@@ -537,29 +553,31 @@ AGENT_MCP_CONFIGS = {
         "key": "mcp",
         "make_entry": lambda ap: {"agentic-ecos": {
             "type": "local",
-            "command": ["uv", "run", "--directory", ap, "agentic_ecos/server.py"],
+            "command": _server_command(ap)[0],
         }},
         "jsonc": True,
     },
     "claude": {
         "path": ".mcp.json",
         "key": "mcpServers",
-        "make_entry": lambda ap: {"agentic-ecos": {
-            "command": "uv",
-            "args": ["run", "--directory", ap, "agentic_ecos/server.py"],
-        }},
+        "make_entry": lambda ap: {"agentic-ecos": _claude_entry(ap)},
         "jsonc": False,
     },
     "cursor": {
         "path": ".cursor/mcp.json",
         "key": "mcpServers",
-        "make_entry": lambda ap: {"agentic-ecos": {
-            "command": "uv",
-            "args": ["run", "--directory", ap, "agentic_ecos/server.py"],
-        }},
+        "make_entry": lambda ap: {"agentic-ecos": _claude_entry(ap)},
         "jsonc": False,
     },
 }
+
+
+def _claude_entry(ap: str) -> dict:
+    """Formato claude/cursor: command (executable) + args (lista)."""
+    cmd, _ = _server_command(ap)
+    if cmd[0].endswith("agentic-ecos-server"):
+        return {"command": cmd[0], "args": []}
+    return {"command": cmd[0], "args": cmd[1:]}
 
 
 def connect(

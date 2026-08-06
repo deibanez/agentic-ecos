@@ -1,0 +1,49 @@
+name: ecosystem-snapshot
+
+on:
+  schedule:
+    - cron: "0 8 * * *"          # todos los días 08:00 UTC
+  workflow_dispatch:             # manual
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ecosystem-snapshot
+  cancel-in-progress: false      # nunca cancelar un snapshot a medias
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install agentic-ecos
+        run: |
+          pip install --quiet mcp
+          pip install --quiet --editable .
+
+      - name: Collect ecosystem status (JSON)
+        id: status
+        run: |
+          agentic-ecos ecosystem status --json > /tmp/snapshot.json
+          echo "Snapshot bytes: $(wc -c < /tmp/snapshot.json)"
+
+      - name: Save snapshot with timestamp
+        run: |
+          mkdir -p data/ecosystem-snapshots
+          TS=$(date -u +%Y%m%dT%H%M%SZ)
+          cp /tmp/snapshot.json "data/ecosystem-snapshots/snapshot-${TS}.json"
+          echo "Guardado: data/ecosystem-snapshots/snapshot-${TS}.json"
+
+      - name: Commit snapshot
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "snapshot: ecosistema $(date -u +%Y-%m-%dT%H:%M:%SZ) [bot:: ecosystem-snapshot]"
+          commit_user_name: agentic-ecos bot
+          commit_user_email: bot@agentic-ecos
+          file_pattern: data/ecosystem-snapshots/*

@@ -158,10 +158,66 @@ Si respondiste NO a alguna: pausa y replantea.
 
 ---
 
+## IX. Automated Task Loops (desarrollo continuo)
+
+> **Qué es**: un ciclo autónomo que procesa tareas del workspace con iteración
+> trazable: detect → claim → plan (LLM) → execute → verify → done/iterate.
+
+### Reglas de seguridad
+
+| Regla | Detalle |
+|-------|---------|
+| **Control humano al inicio** | Los task loops arrancan solo con `workflow_dispatch` manual. Se afloja a `schedule` cuando hay confianza. |
+| **Tipos seguros vs riesgosos** | `docs`, `ops` → automáticos. `feature`, `bug`, `iac`, `ci-cd` → requieren `confirm=true` explícito. |
+| **Dry-run por defecto** | Sin flag `--execute`, el loop NO ejecuta cambios reales. Solo plan + reporte. |
+| **No-edición de fuentes canónicas** | El bot nunca modifica `AGENT_TASKS.md`, `agentic.toml`, `knowledge/` ni `workspace/tasks.md` fuera del protocolo de claim. |
+| **Claim race-free** | `claim_task()` usa git push rejection — si otro agente reclamó primero, se aborta. |
+
+### Protocolo de operación
+
+```
+1. DETECT   → find_available_tasks(type_filter)   (backlog, sin agent)
+2. CLAIM    → [agent:: bot-ci] [status:: doing] + git push
+              (si push rechazado → otro agente ganó → abortar)
+3. PLAN     → llm.plan_task() (o fallback determinístico sin LLM)
+4. EXECUTE  → según [type::] (docs → sync-kanban, etc.)
+5. VERIFY   → tests, validate_structure, llm.compare
+6. DONE     → commit + push con [agent:: bot-ci] [session:: auto-{ts}]
+   |  o ITERATE → volver a 3, máximo N intentos (default 3)
+```
+
+### Trazabilidad
+
+Cada iteración escribe a `AGENT_SESSION_LOG.md` con T-ID:
+
+```json
+{"timestamp": "...", "agent_id": "bot-ci", "role": "worker",
+ "action": "task_loop_iterate", "resource": "T12", "status": "fail_retry",
+ "details": "iteration 2/3, test failure"}
+```
+
+Los commits del bot usan el formato `[agent:: bot-ci] [session:: auto-{ts}]`
+(§V3).
+
+### Comando
+
+```bash
+# Dry-run (seguro, no modifica nada)
+agentic-ecos task-loop --type-filter docs,ops
+
+# Ejecutar una tarea docs específica
+agentic-ecos task-loop --task-id E1 --execute
+
+# Ejecutar una feature con confirmación humana explícita
+agentic-ecos task-loop --task-id E2 --confirm --execute
+```
+
+---
+
 <!-- CUSTOMIZE: Agrega aquí reglas específicas de tu proyecto:
      - Traps y patrones propios de agentic-ecos
      - Casos reales de sesiones con lecciones aprendidas
      - Modos DATA/CODE específicos de tu dominio -->
 
 > **Última actualización**: 2026-08-06
-> **Versión**: 1.0.0
+> **Versión**: 1.1.0 — §IX Task Loops

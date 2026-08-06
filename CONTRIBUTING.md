@@ -55,11 +55,11 @@ de ecosistema (en fork privado) crea el suyo.
 
 ```bash
 # 1. Crear el fork privado (una vez)
-gh repo fork usuario/agentic-ecos --clone --private
+gh repo fork deibanez/agentic-ecos --clone --private
 cd agentic-ecos
 
 # 2. Agregar upstream para sincronizar (una vez)
-git remote add upstream https://github.com/usuario/agentic-ecos.git
+git remote add upstream https://github.com/deibanez/agentic-ecos.git
 
 # 3. Crear tu branch de ecosistema (una vez) — vía tool MCP (trazable)
 agentic-ecos ecosystem branch-create mi-eco --base main
@@ -204,7 +204,7 @@ git push && crear PR → dev
 # Todo el conocimiento vive en el repo:
 cp -r agentic-ecos/ /backup/            # lleva código + knowledge/ + data/ + workspace/
 # En la otra máquina: clonar + checkout de tu branch de ecosistema
-git clone https://github.com/usuario/agentic-ecos.git
+git clone https://github.com/deibanez/agentic-ecos.git
 git checkout ecosystem/mi-eco
 ```
 
@@ -232,7 +232,69 @@ agentic-ecos connect --agent snippet
 
 ---
 
-## 9. Privacidad — main público, todo lo demás privado
+## 9. Automatización CI/CD con LLMs (opcional)
+
+### Qué es
+
+agentic-ecos puede automatizar flujos periódicos con GitHub Actions usando
+síntesis LLM: resúmenes semanales, propuestas de tareas, verificación de PRs
+y revisión de conocimiento. **Es opt-in** — la infraestructura base funciona
+sin LLM. Se activa configurando secrets.
+
+### Requisitos (GitHub secrets)
+
+Configurá en `Settings → Secrets and variables → Actions`:
+
+| Secret | Requerido | Descripción |
+|--------|:---:|-----------|
+| `LLM_API_KEY` | ✅ | API key del provider (DeepSeek, OpenAI, Anthropic, etc.) |
+| `LLM_MODEL` | ⏸️ | Modelo. Default: `deepseek-chat`. Ej: `gpt-4o`, `claude-3-5-sonnet` |
+| `LLM_BASE_URL` | ⏸️ | Solo para providers custom/self-hosted. Default por provider |
+
+### Proveedores soportados
+
+El motor es agnóstico. Detecta el provider por el prefijo del modelo:
+
+| Modelo | Provider | Endpoint |
+|--------|----------|----------|
+| `deepseek-*` | DeepSeek (default) | `https://api.deepseek.com/v1` |
+| `gpt-*`, `o3-*` | OpenAI | `https://api.openai.com/v1` |
+| `claude-*` | Anthropic | `https://api.anthropic.com/v1` |
+| cualquier otro | OpenAI-compatible (Groq, Ollama, local) | `LLM_BASE_URL` |
+
+### Degradación elegante
+
+Sin `LLM_API_KEY` configurado:
+- El CLI, MCP y 34 tools funcionan normalmente.
+- `agentic-ecos llm-test` → error claro: "LLM_API_KEY no configurado".
+- Los workflows commitean los datos crudos (JSON) sin síntesis y crean issues mínimos.
+
+### Verificar la conexión
+
+```bash
+# Local (requiere LLM_API_KEY exportado)
+LLM_API_KEY=sk-... agentic-ecos llm-test --prompt "Hola, ¿funciona?"
+
+# En CI: el workflow weekly-summary ya incluye la verificación implícita
+```
+
+### Workflows disponibles
+
+| Workflow | Schedule | Qué hace |
+|----------|----------|---------|
+| `ecosystem-snapshot.yml` | Daily 8am | Commitea snapshot JSON de salud |
+| `weekly-summary.yml` | Lunes 9am | Resumen + 3-5 tareas propuestas (issue) |
+| `pre-dev-verification.yml` | On PR → dev | LLM revisa el PR y comenta |
+| `knowledge-review.yml` | 1er día del mes | Detecta patterns listos para promover |
+| `task-automation.yml` | `workflow_dispatch` | Task loops (desarrollo continuo) |
+
+**Regla de no-edición**: los workflows NUNCA modifican `AGENT_TASKS.md`,
+`agentic.toml`, `knowledge/` ni `workspace/tasks.md`. Solo escriben archivos
+nuevos en `proposals/` o `data/ecosystem-snapshots/` y crean issues.
+
+---
+
+## 10. Privacidad — main público, todo lo demás privado
 
 ### El modelo
 
@@ -241,7 +303,7 @@ y la documentación viven ahí. Tu ecosistema — `workspace/` (proyectos, tarea
 patrones) y `data/` (experimentos personales) — vive en un **fork privado**.
 
 ```
-github.com/usuario/agentic-ecos      ← PÚBLICO (solo main)
+github.com/deibanez/agentic-ecos      ← PÚBLICO (solo main)
   └── main                           ← código + knowledge/ + docs/
                                        NO workspace/, NO branches ecosystem/
 
@@ -268,11 +330,11 @@ datos "sensibles", es la regla. Solo `main` es público por diseño.
 
 ```bash
 # 1. Crear el fork privado (una vez)
-gh repo fork usuario/agentic-ecos --clone --private
+gh repo fork deibanez/agentic-ecos --clone --private
 cd agentic-ecos
 
 # 2. Agregar upstream para sincronizar (una vez)
-git remote add upstream https://github.com/usuario/agentic-ecos.git
+git remote add upstream https://github.com/deibanez/agentic-ecos.git
 
 # 3. Crear tu branch de ecosistema
 git checkout -b ecosystem/mi-eco main
@@ -324,7 +386,7 @@ desde un **clon público separado** o un branch limpio de `upstream/main`:
 ```bash
 # Opción A — cherry-pick al repo público
 # (clona el repo público por separado y cherry-pick el commit)
-git clone https://github.com/usuario/agentic-ecos.git /tmp/agentic-public
+git clone https://github.com/deibanez/agentic-ecos.git /tmp/agentic-public
 cd /tmp/agentic-public
 git checkout -b feature/add-pattern main
 # copiar el patrón validado de tu fork privado (knowledge/ o workspace/)
