@@ -34,6 +34,7 @@ canonical: true
 - [x] T16: Inyectar _context (ecosistema + tareas + conocimiento) en cada respuesta MCP [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
 - [x] T17: Home.md dinámico + suggestions en _context [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
 - [x] T18: Corregir comando fork privado universal (--fork-name) en documentación [priority:: medium] [status:: done] [type:: docs] [repo:: agentic-ecos]
+- [x] T19: Documentar requirements completos (gh, uv, git) + connect --target genérico [priority:: medium] [status:: done] [type:: docs] [repo:: agentic-ecos]
 
 <!-- TASKS_END -->
 

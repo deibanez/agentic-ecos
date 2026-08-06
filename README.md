@@ -26,7 +26,7 @@ available as an optional layer on top.
 gh repo fork deibanez/agentic-ecos --clone --fork-name agentic-ecos-priv
 gh repo edit --visibility private          # settings → danger zone → change visibility
 cd agentic-ecos-priv && uv add --dev mcp && uv pip install --editable .
-agentic-ecos connect --target ~/repos --agent auto
+agentic-ecos connect --agent auto     # sin --target: usa workspace_root de agentic.toml o CWD
 ```
 
 ## Why
@@ -45,9 +45,24 @@ agentic-ecos connect --target ~/repos --agent auto
 |-----------|--------|------|
 | Python | 3.10+ | Compatible con 3.11, 3.12 |
 | git | Cualquiera reciente | Coordinación agéntica (git push rejection) |
-| Instalador | `uv` (recomendado) o `pip` | `uv` es más rápido; `pip` funciona igual |
+| gh CLI | 2.0+ | `gh auth login` para forkear y gestionar visibilidad |
+| Instalador | `uv` (recomendado) o `pip` | `pip install uv` · `uv add --dev mcp` |
 | Cliente MCP | Cualquiera | OpenCode, Claude Code, Cursor, etc. — agnóstico |
 | LLM (opcional) | Ninguno | Solo para automatización con síntesis de IA (`LLM_API_KEY`) |
+
+**Instalación de herramientas base** (una vez por máquina):
+
+```bash
+# git (Linux: apt/snap · macOS: brew)
+sudo apt install git        # o: brew install git
+
+# gh CLI (GitHub CLI)
+sudo apt install gh         # o: brew install gh
+gh auth login               # autenticarse (usar HTTPS o SSH)
+
+# uv (gestor de paquetes Python)
+pip install uv              # o: curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
 ## Quickstart
 
@@ -75,9 +90,13 @@ agentic-ecos ecosystem branch-create mi-eco --base main
 
 # 3. Plano de control (una vez por ecosistema)
 agentic-ecos ecosystem init --name mi-ecosistema --workspace ~/repos
+#   --workspace = dónde viven tus proyectos (ajustá a tu ruta)
 
 # 4. Conectar el MCP a tu agente (una vez por workspace)
-agentic-ecos connect --target ~/repos --agent auto
+agentic-ecos connect --agent auto
+#   Sin --target: usa el workspace_root definido por ecosystem_init (paso 3),
+#   así que escribe opencode.jsonc en la raíz de tu workspace, no en el repo.
+#   Solo usa --target explícito si querés escribir en otro directorio.
 
 # 5. Verificar
 agentic-ecos protocols
