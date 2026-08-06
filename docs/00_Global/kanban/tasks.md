@@ -31,6 +31,7 @@ purpose: Auto-generado desde AGENT_TASKS.md. NO EDITAR A MANO — editar AGENT_T
 - [ ] #feature #agentic-ecos T10: Tools MCP de git (branch_create, sync_upstream, merge_main) + rama dev en upstream [priority:: high] [status:: done] [repo:: agentic-ecos]
 - [ ] #feature #agentic-ecos T11: Simplificar instalación (clone-and-run) + entry points CLI/server + connect usa venv [priority:: high] [status:: done] [repo:: agentic-ecos]
 - [ ] #feature #agentic-ecos T12: Automatización CI/CD con LLMs (CLI --json, llm.py, 5 workflows, task_loop) [priority:: high] [status:: done] [repo:: agentic-ecos]
+- [ ] #feature #agentic-ecos T13: Cerrar gap de ciclo de vida de tareas + auto-contexto MCP + README agnóstico [priority:: high] [status:: done] [repo:: agentic-ecos]
 - [ ] #feature #agentic-ecos T6: Implementar conocimiento 4-tier + branches + tasks cross-cutting + connect multi-agente [priority:: high] [status:: done] [repo:: agentic-ecos]
 - [ ] #docs #agentic-ecos T7: Escribir CONTRIBUTING.md (flujo de forking, upgrade, ciclo del conocimiento) [priority:: medium] [status:: done] [repo:: agentic-ecos]
 - [ ] #docs #agentic-ecos T8: Documentar flujo de fork privado para privacidad (CONTRIBUTING §10, README, ARCHITECTURE, instructions, AGENTS) [priority:: medium] [status:: done] [repo:: agentic-ecos]

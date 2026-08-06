@@ -12,13 +12,5 @@
         "scripts/mcp_server.py"
       ]
     }
-  },
-  "agent": {
-    "plan": {
-      "model": "deepseek/deepseek-v4-pro"
-    },
-    "build": {
-      "model": "deepseek/deepseek-v4-flash"
-    }
   }
 }

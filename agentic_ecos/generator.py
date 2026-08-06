@@ -583,6 +583,20 @@ def main():
     p_eco_addtask.add_argument("--type", default="ops")
     p_eco_addtask.add_argument("--scope", default="ecosystem")
     p_eco_addtask.add_argument("--config", default=None)
+    p_eco_claim = p_eco_sub.add_parser("claim", help="Reclama una tarea (race-free).")
+    p_eco_claim.add_argument("task_id")
+    p_eco_claim.add_argument("--agent", required=True, help="Tu agent_id")
+    p_eco_claim.add_argument("--tasks-file", default=None)
+    p_eco_done = p_eco_sub.add_parser("done", help="Completa una tarea reclamada por ti.")
+    p_eco_done.add_argument("task_id")
+    p_eco_done.add_argument("--agent", required=True, help="Tu agent_id")
+    p_eco_done.add_argument("--tasks-file", default=None)
+    p_eco_tstatus = p_eco_sub.add_parser("task-status", help="Consulta el estado de tareas.")
+    p_eco_tstatus.add_argument("--task-id", default=None)
+    p_eco_tstatus.add_argument("--filter", default=None,
+                               help="unclaimed | claimed | done | backlog | <agent-id>")
+    p_eco_tstatus.add_argument("--tasks-file", default=None)
+    p_eco_tstatus.add_argument("--json", action="store_true", help="Salida JSON")
     p_eco_branch = p_eco_sub.add_parser("branch-create", help="Crea tu branch de ecosistema.")
     p_eco_branch.add_argument("name")
     p_eco_branch.add_argument("--base", default="main",
@@ -662,6 +676,42 @@ def main():
             r = ecosystem_task_add(args.description, priority=args.priority,
                                    type=args.type, scope=args.scope, config_path=args.config)
             print(f"✅ {r.get('task_id', '?')} agregada en {r.get('path', '?')}")
+            return 0
+        if args.eco_command == "claim":
+            from .task_loop import claim_task
+            from pathlib import Path as _P
+            tf = _P(args.tasks_file) if args.tasks_file else None
+            r = claim_task(args.task_id, args.agent, tasks_file=tf)
+            if not r["ok"]:
+                print(f"❌ {r['error']}")
+                return 1
+            print(f"✅ {args.task_id} reclamada por {args.agent}")
+            return 0
+        if args.eco_command == "done":
+            from .task_loop import done_task
+            from pathlib import Path as _P
+            tf = _P(args.tasks_file) if args.tasks_file else None
+            r = done_task(args.task_id, args.agent, tasks_file=tf)
+            if not r["ok"]:
+                print(f"❌ {r['error']}")
+                return 1
+            print(f"✅ {args.task_id} completada")
+            return 0
+        if args.eco_command == "task-status":
+            from .task_loop import get_task_status
+            from pathlib import Path as _P
+            tf = _P(args.tasks_file) if args.tasks_file else None
+            r = get_task_status(task_id=args.task_id, filter_agent=args.filter,
+                                tasks_file=tf)
+            if _out(r, args.json):
+                return 0
+            for t in r.get("tasks", []):
+                mark = "✅" if t["checked"] else "⬜"
+                agent = t["fields"].get("agent", "-")
+                status = t["fields"].get("status", "backlog")
+                print(f"  {mark} {t['id']}: {t['label']} [{status}] agent={agent}")
+            if not r.get("tasks"):
+                print("  (sin tareas)")
             return 0
         if args.eco_command == "branch-create":
             from .ecosystem import ecosystem_branch_create

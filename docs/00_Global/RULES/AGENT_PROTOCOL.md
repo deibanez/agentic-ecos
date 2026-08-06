@@ -163,6 +163,13 @@ Si respondiste NO a alguna: pausa y replantea.
 > **Qué es**: un ciclo autónomo que procesa tareas del workspace con iteración
 > trazable: detect → claim → plan (LLM) → execute → verify → done/iterate.
 
+> **Relación con el flujo local**: el ciclo de tareas manual (add → claim →
+> work → done) es **local-first** y funciona en cualquier sesión agéntica con
+> git. Los Task Loops automáticos son una capa **opcional** de CI/CD que
+> ejecuta el mismo ciclo para tareas `docs`/`ops` vía `task-automation.yml`.
+> No son necesarios para el trabajo local — son para quien quiere desarrollo
+> continuo automático periódico.
+
 ### Reglas de seguridad
 
 | Regla | Detalle |

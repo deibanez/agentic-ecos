@@ -530,6 +530,29 @@ def _insert_mcp_entry(jsonc: str, server_name: str, payload: dict) -> str:
     return prefix + "\n    " + inner + "\n  " + jsonc[k:]
 
 
+def _ensure_instructions(jsonc: str, agentic_instructions: str) -> str:
+    """Agrega el campo `instructions` a la raíz de un opencode.jsonc si no existe.
+
+    Inserta el instructions.md del repo agentic-ecos para que el agente cargue
+    el contexto del MCP automáticamente.
+    """
+    clean = _strip_jsonc_comments(jsonc)
+    if '"instructions"' in clean:
+        return jsonc  # ya tiene instructions
+
+    # Insertar antes del cierre de la llave raíz
+    brace = jsonc.rfind("}")
+    if brace == -1:
+        return jsonc
+    entry = json.dumps([agentic_instructions])
+    tail = jsonc[:brace].rstrip()
+    if tail.endswith(",") or tail.endswith("{"):
+        sep = ""
+    else:
+        sep = ","
+    return tail + sep + "\n  \"instructions\": " + entry + "\n" + jsonc[brace:]
+
+
 def _server_command(ap: str) -> tuple[list[str], Optional[dict]]:
     """Resuelve el comando MCP del server.
 
@@ -641,6 +664,9 @@ def connect(
                 continue
             if cfg["jsonc"]:
                 updated = _insert_mcp_entry(original, "agentic-ecos", payload)
+                # Agregar instructions del repo agentic-ecos si el config no las tiene
+                agentic_instructions = str(Path(agentic_path) / "instructions.md")
+                updated = _ensure_instructions(updated, agentic_instructions)
                 path.write_text(updated)
             else:
                 # JSON puro (claude/cursor): parsear, agregar, re-serializar
@@ -654,8 +680,10 @@ def connect(
             results[name] = {"status": "connected", "path": str(path)}
         elif create_if_missing:
             if cfg["jsonc"]:
+                # Incluir el instructions.md del repo agentic-ecos (contexto del MCP)
+                agentic_instructions = str(Path(agentic_path) / "instructions.md")
                 content = json.dumps({
-                    "instructions": ["00_Global/AGENTS.md"],
+                    "instructions": [agentic_instructions, "00_Global/AGENTS.md"],
                     "mcp": {"agentic-ecos": payload["agentic-ecos"]},
                 }, indent=2, ensure_ascii=False)
             else:

@@ -127,7 +127,14 @@ def claim_task(task_id: str, agent_id: str, tasks_file: Optional[Path] = None) -
     new_line = new_line.rstrip() + f" [agent:: {agent_id}] [claimed:: {_now()}]"
     new_content = content.replace(line, new_line)
 
-    # Escritura atómica
+    # Commit + push (primero verificar que el archivo está en un repo git)
+    repo_ok = _git("rev-parse", "--is-inside-work-tree")["ok"]
+    if not repo_ok:
+        return {"ok": False,
+                "error": "No es un repositorio git. El claim requiere git para la "
+                         "coordinación race-free. Inicializá git o usá --dry-run."}
+
+    # Escritura atómica DESPUÉS de verificar que git está disponible
     tmp = path.with_suffix(".tmp")
     tmp.write_text(new_content)
     tmp.rename(path)
@@ -138,12 +145,18 @@ def claim_task(task_id: str, agent_id: str, tasks_file: Optional[Path] = None) -
         commit = _git("commit", "-m",
                       f"task: claim {task_id} [agent:: {agent_id}] [session:: {_now()}]")
     if not commit["ok"]:
+        # Revertir la modificación local (restaurar contenido original)
+        tmp2 = path.with_suffix(".revert")
+        tmp2.write_text(content)
+        tmp2.rename(path)
         return {"ok": False, "error": f"Commit falló: {commit.get('stderr')}"}
 
     push = _git("push")
     if not push["ok"]:
         # Revertir el claim local (push rechazado → otro agente ganó)
-        _git("checkout", "--", str(path))
+        tmp2 = path.with_suffix(".revert")
+        tmp2.write_text(content)
+        tmp2.rename(path)
         return {"ok": False, "error": "Push rechazado — otro agente reclamó primero",
                 "stderr": push.get("stderr")}
 
@@ -359,3 +372,118 @@ def run_loop(task_id: Optional[str] = None,
 
     return {"ok": True, "agent_id": agent_id, "results": results,
             "dry_run": dry_run, "tasks_file": str(path)}
+
+
+# ─── Completar tarea ─────────────────────────────────────────────────────────
+
+def done_task(task_id: str, agent_id: str, tasks_file: Optional[Path] = None) -> dict:
+    """Marca una tarea como completada: [status:: done] [completed:: ISO].
+
+    Verifica que el `agent_id` que completa es el mismo que la reclamó
+    (si tiene [agent::]). Commit + push con trazabilidad.
+    """
+    path = tasks_file or storage.workspace_tasks_path()
+    if not path.exists():
+        return {"ok": False, "error": f"Tasks file no existe: {path}"}
+
+    task = find_task(task_id, path)
+    if task is None:
+        return {"ok": False, "error": f"Tarea {task_id} no encontrada"}
+
+    # Verificar ownership: si tiene agent, debe ser el mismo
+    claimed_by = task["fields"].get("agent")
+    if claimed_by and claimed_by != agent_id:
+        return {"ok": False, "error": f"Tarea {task_id} reclamada por {claimed_by}, "
+                                      f"no por {agent_id} — no podés completarla."}
+
+    # Actualizar la línea: status doing/backlog → done + completed
+    content = path.read_text()
+    line = task["raw"]
+    new_line = re.sub(r"\[status::\s*[^\]]+\]", "[status:: done]", line)
+    new_line = re.sub(r"\[claimed::\s*[^\]]+\]", "", new_line)
+    new_line = new_line.rstrip() + f" [completed:: {_now()}]"
+    new_content = content.replace(line, new_line)
+
+    # Verificar que el archivo está en un repo git (commit/push requieren git)
+    repo_ok = _git("rev-parse", "--is-inside-work-tree")["ok"]
+    if not repo_ok:
+        return {"ok": False,
+                "error": "No es un repositorio git. El done requiere git para la "
+                         "trazabilidad. Inicializá git o usá --dry-run."}
+
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(new_content)
+    tmp.rename(path)
+
+    commit = _git("add", str(path))
+    if commit["ok"]:
+        commit = _git("commit", "-m",
+                      f"task: done {task_id} [agent:: {agent_id}] [session:: {_now()}]")
+    if not commit["ok"]:
+        # Revertir la modificación local (restaurar contenido original)
+        tmp2 = path.with_suffix(".revert")
+        tmp2.write_text(content)
+        tmp2.rename(path)
+        return {"ok": False, "error": f"Commit falló: {commit.get('stderr')}"}
+
+    push = _git("push")
+    if not push["ok"]:
+        tmp2 = path.with_suffix(".revert")
+        tmp2.write_text(content)
+        tmp2.rename(path)
+        return {"ok": False, "error": "Push rechazado — otro agente modificó la tarea",
+                "stderr": push.get("stderr")}
+
+    _log(agent_id, "task_done", task_id, "success", f"file={path.name}")
+    return {"ok": True, "task_id": task_id, "status": "done"}
+
+
+# ─── Estado / filtro de tareas ──────────────────────────────────────────────
+
+def get_task_status(task_id: Optional[str] = None,
+                    filter_agent: Optional[str] = None,
+                    tasks_file: Optional[Path] = None) -> dict:
+    """Devuelve tareas filtradas.
+
+    Args:
+        task_id: tarea específica por ID.
+        filter_agent: 'unclaimed' (sin [agent::]) | 'claimed' | 'done'
+                      | 'backlog' | ID de agente específico.
+        tasks_file: archivo de tareas (default: workspace/tasks.md).
+    """
+    path = tasks_file or storage.workspace_tasks_path()
+    if not path.exists():
+        return {"ok": True, "tasks": [], "tasks_file": str(path)}
+
+    all_tasks = storage.parse_tasks_markdown(path.read_text())
+
+    if task_id:
+        match = next((t for t in all_tasks if t["id"] == task_id), None)
+        return {"ok": True, "task": match, "tasks": [match] if match else [],
+                "tasks_file": str(path)}
+
+    filtered = []
+    for t in all_tasks:
+        fields = t["fields"]
+        status = fields.get("status", "backlog")
+        agent = fields.get("agent")
+        if filter_agent == "unclaimed":
+            if not t["checked"] and not agent and status == "backlog":
+                filtered.append(t)
+        elif filter_agent == "claimed":
+            if not t["checked"] and agent:
+                filtered.append(t)
+        elif filter_agent == "done":
+            if t["checked"] or status == "done":
+                filtered.append(t)
+        elif filter_agent == "backlog":
+            if not t["checked"] and status == "backlog":
+                filtered.append(t)
+        elif filter_agent:
+            if agent == filter_agent:
+                filtered.append(t)
+        else:
+            filtered.append(t)
+
+    return {"ok": True, "tasks": filtered, "tasks_file": str(path),
+            "filter": filter_agent}
