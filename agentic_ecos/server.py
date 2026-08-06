@@ -89,6 +89,12 @@ QUICK HELP:
   list_protocols() — protocol templates
   list_patterns("coordination|knowledge|interface|...") — patterns by domain
 
+EVERY tool response includes a `_context` field with live ecosystem state:
+  ecosystem_summary — project counts and infra coverage
+  task_backlog — pending task counts
+  knowledge_state — patterns/traps per tier
+  → You don't need to call ecosystem_status/tasks separately for a quick pulse.
+
 LLM is OPTIONAL: set LLM_API_KEY env var for AI-synthesized summaries,
 task proposals and PR reviews. Without it, everything works normally.
 
@@ -419,6 +425,105 @@ HANDLERS = {
 }
 
 
+# ─── Contexto sistémico (inyectado en CADA respuesta MCP) ───────────────────
+
+_ctx_cache = {"ts": 0.0, "data": None}
+_CTX_TTL = 10.0  # segundos — refresco barato para no bloquear cada llamada
+
+
+def _ecosystem_summary_compact() -> dict:
+    """Resumen del ecosistema en formato mínimo (no bloquea)."""
+    try:
+        s = ecosystem_status()
+        return {
+            "projects": s.get("projects_count", 0),
+            "with_infra": s.get("with_agentic_infra", 0),
+            "without_infra": s.get("without_agentic_infra", 0),
+        }
+    except Exception:
+        return {"error": "no ecosystem configured"}
+
+
+def _task_backlog_compact() -> dict:
+    """Estado de tareas en formato mínimo."""
+    try:
+        t = ecosystem_tasks()
+        return {
+            "cross_cutting_backlog": t.get("cross_cutting_backlog", 0),
+            "ecosystem_backlog": t.get("ecosystem_backlog", 0),
+        }
+    except Exception:
+        return {"error": "no tasks"}
+
+
+def _knowledge_compact() -> dict:
+    """Estado del conocimiento por tier en formato mínimo."""
+    try:
+        from .knowledge import knowledge_status
+        k = knowledge_status()
+        return {
+            "tier1_builtin": k.get("tier1_builtin_patterns", 0),
+            "tier2_patterns": k.get("tier2_knowledge_patterns", 0),
+            "tier2_traps": k.get("tier2_knowledge_traps", 0),
+            "tier3_custom": k.get("tier3_custom_patterns", 0),
+        }
+    except Exception:
+        return {}
+
+
+def _suggestions() -> list[str]:
+    """Recomendaciones accionables basadas en heurísticas del estado actual."""
+    items = []
+    eco = _ecosystem_summary_compact()
+    tasks = _task_backlog_compact()
+    know = _knowledge_compact()
+
+    if eco.get("error"):
+        items.append("No ecosystem configured. Use ecosystem_init() to bootstrap.")
+    elif eco.get("without_infra", 0) > 0:
+        items.append(f"{eco['without_infra']} project(s) lack agentic infra. "
+                     f"Use ecosystem_status() to identify gaps, then init_project().")
+    if tasks.get("ecosystem_backlog", 0) > 0:
+        items.append(f"{tasks['ecosystem_backlog']} task(s) in backlog. "
+                     f"Use ecosystem_task_status(filter='unclaimed') to see available.")
+    if know.get("tier3_custom", 0) > 0:
+        items.append(f"{know['tier3_custom']} pattern(s) in tier3 (personal). "
+                     f"Consider promote_to_workspace() if validated in 2+ projects.")
+    if know.get("tier2_patterns", 0) > 0 or know.get("tier2_traps", 0) > 0:
+        items.append("Knowledge in tier2 (community). "
+                     "Use get_pattern() to consult, or promote_to_knowledge() for new ones.")
+
+    if not items:
+        items.append("Ecosystem is healthy. Explore patterns (list_patterns) or "
+                     "bootstrap a project (init_project).")
+    return items
+
+
+def _context() -> dict:
+    """Contexto sistémico inyectado en cada respuesta MCP (cacheado 10s)."""
+    import time
+    now = time.time()
+    if _ctx_cache["data"] is not None and (now - _ctx_cache["ts"]) < _CTX_TTL:
+        return _ctx_cache["data"]
+    ctx = {
+        "system_health": "unknown",
+        "ecosystem_summary": _ecosystem_summary_compact(),
+        "task_backlog": _task_backlog_compact(),
+        "knowledge_state": _knowledge_compact(),
+        "suggestions": _suggestions(),
+    }
+    _ctx_cache["ts"] = now
+    _ctx_cache["data"] = ctx
+    return ctx
+
+
+def _inject_context(result: dict) -> dict:
+    """Agrega _context a una respuesta MCP si es dict y no lo tiene ya."""
+    if isinstance(result, dict) and "_context" not in result:
+        result["_context"] = _context()
+    return result
+
+
 # ─── Tool registration (list) ─────────────────────────────────────────────────
 
 TOOL_DEFINITIONS = [
@@ -709,6 +814,7 @@ async def handle_call_tool(name: str, arguments: dict):
         return [TextContent(type="text", text=json.dumps({"ok": False, "error": f"Unknown tool: {name}"}))]
     try:
         result = await handler(arguments or {})
+        result = _inject_context(result)
         return [TextContent(type="text", text=json.dumps(result, indent=2, ensure_ascii=False, default=str))]
     except Exception as exc:  # pragma: no cover
         return [TextContent(type="text", text=json.dumps({"ok": False, "error": str(exc)}, indent=2))]

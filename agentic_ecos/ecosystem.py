@@ -264,6 +264,12 @@ def project_add(
     data.setdefault("ecosystem", {}).setdefault("updated", utc_now())
     data["ecosystem"]["updated"] = utc_now()
     path_saved = save_config(data, Path(config_path) if config_path else None)
+    # Hook: sincronizar Home.md del vault con el nuevo estado
+    try:
+        from .sync_home import hook_sync_home
+        hook_sync_home()
+    except Exception:
+        pass
     return {"ok": True, "action": action, "project": entry, "config_path": str(path_saved)}
 
 
@@ -277,6 +283,11 @@ def project_remove(name: str, config_path: Optional[str] = None) -> dict:
     data.setdefault("ecosystem", {}).setdefault("updated", utc_now())
     data["ecosystem"]["updated"] = utc_now()
     save_config(data, Path(config_path) if config_path else None)
+    try:
+        from .sync_home import hook_sync_home
+        hook_sync_home()
+    except Exception:
+        pass
     return {"ok": True, "action": "removed", "project": name}
 
 

@@ -45,6 +45,11 @@ def promote_to_workspace(name: str, config_path=None) -> dict:
                                       f"Agrega con add_custom_pattern primero."}
     path = storage.save_workspace_pattern(pattern)
     storage.remove_custom_pattern(name)
+    try:
+        from .sync_home import hook_sync_home
+        hook_sync_home()
+    except Exception:
+        pass
     return {"ok": True, "action": "promoted_to_workspace", "pattern": pattern,
             "path": str(path), "note": "Commitea en tu branch de ecosistema."}
 
@@ -74,6 +79,11 @@ def promote_to_knowledge(name: str, source: str = "workspace", kind: str = "patt
         path = storage.save_knowledge_trap(match)
     else:
         path = storage.save_knowledge_pattern(match)
+    try:
+        from .sync_home import hook_sync_home
+        hook_sync_home()
+    except Exception:
+        pass
     return {"ok": True, "action": f"promoted_to_knowledge[{kind}]",
             "pattern": match, "path": str(path),
             "note": "Commitea knowledge/ y crea PR a upstream/main."}
