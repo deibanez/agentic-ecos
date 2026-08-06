@@ -29,6 +29,7 @@ canonical: true
 - [x] T11: Simplificar instalación (clone-and-run) + entry points CLI/server + connect usa venv [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
 - [x] T12: Automatización CI/CD con LLMs (CLI --json, llm.py, 5 workflows, task_loop) [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
 - [x] T13: Cerrar gap de ciclo de vida de tareas + auto-contexto MCP + README agnóstico [priority:: high] [status:: done] [type:: feature] [repo:: agentic-ecos]
+- [x] T14: Unificar onboarding en flujo único fork privado (Quickstart simplificado) [priority:: medium] [status:: done] [type:: docs] [repo:: agentic-ecos]
 
 <!-- TASKS_END -->
 
