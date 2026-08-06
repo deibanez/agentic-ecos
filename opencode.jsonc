@@ -4,7 +4,7 @@
   "mcp": {
     "agentic-ecos": {
       "type": "local",
-      "command": ["uv", "run", "--directory", ".", "agentic_ecos/server.py"]
+      "command": [".venv/bin/agentic-ecos-server"]
     }
   }
 }

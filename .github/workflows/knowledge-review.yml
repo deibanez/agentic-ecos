@@ -1,0 +1,88 @@
+name: knowledge-review
+
+on:
+  schedule:
+    - cron: "0 10 1 * *"         # primer día del mes 10:00 UTC
+  workflow_dispatch:             # manual
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: knowledge-review
+  cancel-in-progress: false
+
+env:
+  LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+  LLM_MODEL: ${{ secrets.LLM_MODEL || 'deepseek-chat' }}
+  LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install agentic-ecos
+        run: |
+          pip install --quiet mcp
+          pip install --quiet --editable .
+
+      - name: Collect knowledge status
+        run: |
+          agentic-ecos knowledge status --json > /tmp/knowledge.json
+
+      - name: Detect patterns ready for promotion
+        id: detect
+        run: |
+          python - <<'EOF'
+          import json
+          from agentic_ecos import storage
+
+          workspace_patterns = storage.load_workspace_patterns()
+          custom_patterns = storage.load_custom_patterns()
+          knowledge = json.load(open("/tmp/knowledge.json"))
+
+          ready = []
+          for p in workspace_patterns:
+              has_docs = all(k in p for k in ("description", "when_to_use", "implementation_guide"))
+              ready.append({"name": p.get("name"), "complete": has_docs, "source": "workspace"})
+          for p in custom_patterns:
+              ready.append({"name": p.get("name"), "source": "data"})
+
+          body = "# Revisión mensual de conocimiento\n\n"
+          body += f"## Estado por tier\n- {json.dumps(knowledge, indent=2, default=str)}\n\n"
+          body += "## Patrones candidatos a promoción\n\n"
+          if not ready:
+              body += "_No hay patrones candidates._\n"
+          else:
+              for p in ready:
+                  body += f"- `{p['name']}` (fuente: {p['source']}" \
+                          + (", documentación completa" if p.get("complete") else ", incompleto") + ")\n"
+
+          import os
+          if not os.environ.get("LLM_API_KEY"):
+              body += "\n\n_LLM_API_KEY no configurado — revisión manual requerida._"
+          else:
+              from agentic_ecos.llm import synthesize
+              r = synthesize({"patterns": json.dumps(ready, default=str)}, role="review_knowledge")
+              body += "\n\n## Recomendaciones LLM\n\n" + \
+                      (r.get("text", "*(sin recomendaciones)*") if r.get("ok") else f"*(LLM error: {r.get('error')})*")
+
+          open("/tmp/knowledge-issue.md", "w").write(body)
+          print("Issue de conocimiento generado")
+          EOF
+
+      - name: Create issue
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT || github.token }}
+        run: |
+          gh issue create \
+            --title "Knowledge review $(date -u +%Y-%m)" \
+            --body-file /tmp/knowledge-issue.md \
+            --label "knowledge" || echo "No se pudo crear issue"

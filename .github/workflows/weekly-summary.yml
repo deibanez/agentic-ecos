@@ -1,0 +1,89 @@
+name: weekly-summary
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"          # todos los lunes 09:00 UTC
+  workflow_dispatch:             # manual
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: weekly-summary
+  cancel-in-progress: false
+
+env:
+  LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+  LLM_MODEL: ${{ secrets.LLM_MODEL || 'deepseek-chat' }}
+  LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install agentic-ecos
+        run: |
+          pip install --quiet mcp
+          pip install --quiet --editable .
+
+      - name: Collect ecosystem context
+        run: |
+          agentic-ecos ecosystem status --json > /tmp/status.json
+          agentic-ecos ecosystem tasks --json > /tmp/tasks.json
+          agentic-ecos knowledge status --json > /tmp/knowledge.json
+
+      - name: Generate summary + task proposals (LLM)
+        id: llm
+        run: |
+          python - <<'EOF'
+          import json
+          from agentic_ecos.llm import synthesize
+
+          status = json.load(open("/tmp/status.json"))
+          tasks = json.load(open("/tmp/tasks.json"))
+          knowledge = json.load(open("/tmp/knowledge.json"))
+
+          context = {
+              "status": status,
+              "knowledge": knowledge,
+              "_tasks": json.dumps(tasks.get("cross_cutting", []), default=str),
+          }
+
+          # Si no hay API key, degradar: solo datos crudos
+          import os
+          if not os.environ.get("LLM_API_KEY"):
+              summary = "**Resumen semanal (sin LLM — LLM_API_KEY no configurado).**\n\n" \
+                        f"- Proyectos: {status.get('projects_count', 0)} " \
+                        f"({status.get('with_agentic_infra', 0)} con infra)\n" \
+                        f"- Backlog ecosistema: {tasks.get('ecosystem_backlog', 0)}\n\n" \
+                        "Configurá LLM_API_KEY en Settings → Secrets → Actions para " \
+                        "resúmenes y propuestas generados por IA."
+          else:
+              r = synthesize(context, role="summarize_ecosystem")
+              summary = r.get("text", "*(fallo de síntesis)*") if r.get("ok") else \
+                        f"*(LLM error: {r.get('error')})*"
+              props = synthesize(context, role="propose_tasks")
+              if props.get("ok"):
+                  summary += "\n\n## Tareas propuestas\n\n" + props["text"]
+
+          body = f"# Resumen semanal del ecosistema\n\n{summary}\n\n" \
+                 f"_Generado {json.dumps(status.get('ecosystem', {}).get('updated', 'now'))}_"
+          open("/tmp/issue-body.md", "w").write(body)
+          print("Issue body generado")
+          EOF
+
+      - name: Create issue (or comment if no API key → still creates)
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT || github.token }}
+        run: |
+          gh issue create \
+            --title "Weekly ecosystem summary $(date -u +%Y-%m-%d)" \
+            --body-file /tmp/issue-body.md \
+            --label "automation" || echo "No se pudo crear issue (puede no existir GH_PAT)"

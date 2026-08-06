@@ -234,7 +234,8 @@ def test_connect_creates_opencode(tmp_path):
     assert jsonc.exists()
     content = jsonc.read_text()
     assert '"agentic-ecos"' in content
-    assert "agentic_ecos/server.py" in content
+    # comando apunta al server (entry point del venv o fallback uv run)
+    assert "agentic-ecos-server" in content or "agentic_ecos/server.py" in content
     assert "opencode" in r["results"]  # default a opencode si no hay otros configs
 
 

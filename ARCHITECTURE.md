@@ -351,7 +351,7 @@ Si vivieran en un repo público, serían visibles. El diseño fuerza:
 Esto da **privacidad total + trazabilidad completa** sin fricción: todo se
 commitea en tu fork privado, `git log` de cada cambio.
 
-Ver `CONTRIBUTING.md` §9 para el flujo completo.
+Ver `CONTRIBUTING.md` §10 para el flujo completo.
 
 ---
 

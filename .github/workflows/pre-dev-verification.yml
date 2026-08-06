@@ -1,0 +1,88 @@
+name: pre-dev-verification
+
+on:
+  pull_request:
+    branches: [dev, main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pre-dev-${{ github.head_ref }}
+  cancel-in-progress: false
+
+env:
+  LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+  LLM_MODEL: ${{ secrets.LLM_MODEL || 'deepseek-chat' }}
+  LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install agentic-ecos
+        run: |
+          pip install --quiet mcp
+          pip install --quiet --editable .
+
+      - name: Validate structure (coverage)
+        run: |
+          agentic-ecos validate . --json > /tmp/validate.json || true
+
+      - name: Knowledge status
+        run: |
+          agentic-ecos knowledge status --json > /tmp/knowledge.json || true
+
+      - name: Get changed files
+        id: files
+        run: |
+          git diff --name-only origin/${{ github.base_ref }}...HEAD > /tmp/changed-files.txt
+          echo "Archivos cambiados: $(wc -l < /tmp/changed-files.txt)"
+          cat /tmp/changed-files.txt
+
+      - name: Generate PR review comment (LLM)
+        id: review
+        run: |
+          python - <<'EOF'
+          import json, os
+          from agentic_ecos.llm import synthesize
+
+          changed = open("/tmp/changed-files.txt").read().strip()
+          try:
+              knowledge = json.load(open("/tmp/knowledge.json"))
+          except Exception:
+              knowledge = {}
+
+          files_diff = "\n".join(f"- {f}" for f in changed.splitlines() if f)
+
+          context = {"knowledge_status": json.dumps(knowledge, default=str)}
+          if not os.environ.get("LLM_API_KEY"):
+              comment = "## Pre-verificación (sin LLM)\n\n" \
+                        "LLM_API_KEY no configurado — verificación manual requerida.\n\n" \
+                        f"**Archivos modificados ({len(changed.splitlines())}):**\n{files_diff}"
+          else:
+              r = synthesize(context, role="review_pr",
+                             prompt=f"Archivos modificados:\n{files_diff}\n\n{context.get('knowledge_status','')}")
+              comment = "## Revisión automática del PR\n\n" + \
+                        (r.get("text", "*(sin feedback)*") if r.get("ok") else f"*(LLM error: {r.get('error')})*")
+
+          open("/tmp/review-comment.md", "w").write(comment)
+          print("Review generado")
+          EOF
+
+      - name: Post PR comment
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT || github.token }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/review-comment.md \
+            || echo "No se pudo comentar el PR"
