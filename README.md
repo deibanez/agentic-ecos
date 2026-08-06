@@ -1,10 +1,25 @@
 # agentic-ecos
 
-Control plane for traceable agentic infrastructure across your digital ecosystem.
+Control plane for traceable agentic infrastructure. `agentic-ecos` is an MCP
+server that bootstraps, manages, and operates multi-agent coordination across
+your entire digital ecosystem — not just one project.
 
-- **Python 3.10+** · **git** · **37 MCP tools** · **73 tests** · **MIT**
-- MCP-compatible: OpenCode, Claude Code, Cursor, and any MCP client
-- LLM-agnostic automation: DeepSeek, OpenAI, Anthropic, Ollama — opt-in
+It generates the full agentic stack in any project (locks, tasks with kanban,
+inter-agent communication, session audit, access control, protocol documents,
+and an Obsidian vault). It maintains a canonical registry of every project in
+your ecosystem and their agentic health. It encodes 15 battle-tested
+coordination patterns that agents query to avoid rediscovering the same
+solutions. And it handles the complete task lifecycle — create, claim, work,
+complete — with git-based traceability that records who did what and when.
+
+All of this works **local-first**: agents coordinate via git push rejection,
+no central server required. GitHub Actions and LLM-synthesized automation are
+available as an optional layer on top.
+
+- **Python 3.10+** · **git** · **37 MCP tools** · **73 tests** · **[MIT](LICENSE)**
+- Compatible with any MCP client: OpenCode, Claude Code, Cursor, and others
+- LLM-agnostic automation: DeepSeek, GPT, Claude, Ollama — opt-in
+- Vault autodocumental abrible en Obsidian (`docs/`)
 
 ```bash
 gh repo fork deibanez/agentic-ecos --clone --private
@@ -239,6 +254,7 @@ docs/00_Global/      # vault autodocumental (Obsidian)
 - [ARCHITECTURE.md](ARCHITECTURE.md) — capas, patrones, plano de control, pipeline de generación
 - [CONTRIBUTING.md](CONTRIBUTING.md) — uso, forking, ciclo del conocimiento, privacidad, CI/CD
 - [instructions.md](instructions.md) — prompt del agente
+- [LICENSE](LICENSE) — MIT License
 
 ## Roadmap
 
