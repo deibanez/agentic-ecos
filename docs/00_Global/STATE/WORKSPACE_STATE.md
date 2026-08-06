@@ -46,6 +46,7 @@ purpose: Estado del desarrollo de agentic-ecos
 | 16 | Contexto sistémico en respuestas MCP | ✅ | _context inyectado en cada tool (ecosystem + tasks + knowledge) |
 | 17 | Home.md dinámico + suggestions | ✅ | sync_home_md + sugerencias accionables en _context |
 | 18 | Fix comando fork privado universal | ✅ | --fork-name agentic-ecos-priv en docs (dueño y terceros) |
+| 19 | Requirements + connect genérico | ✅ | gh/uv/git documentados + --target . con notas |
 
 ---
 

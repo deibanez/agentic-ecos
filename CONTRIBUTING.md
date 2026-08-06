@@ -73,7 +73,9 @@ agentic-ecos ecosystem init --name "mi-ecosistema" --workspace ~/repos
 #   → crea workspace/agentic.toml con tus proyectos detectados
 
 # 5. Conectar el MCP al workspace (para todos los agentes que uses)
-agentic-ecos connect --target ~/repos --agent auto
+agentic-ecos connect --agent auto
+#   Sin --target: usa el workspace_root del agentic.toml (paso 4), escribe en
+#   la raíz de tu workspace. Solo usa --target explícito para otro directorio.
 #   → escribe opencode.jsonc / .mcp.json / .cursor/mcp.json según detecte
 
 # 6. Desde el agente, bootstrapear proyectos
@@ -353,7 +355,8 @@ agentic-ecos ecosystem init --name "mi-ecosistema" --workspace ~/repos
 #   → workspace/agentic.toml se crea y se commitea EN TU REPO PRIVADO
 
 # 5. Conectar el MCP
-agentic-ecos connect --target ~/repos --agent auto
+agentic-ecos connect --agent auto
+#   Sin --target: usa el workspace_root del agentic.toml (escribe en tu workspace)
 ```
 
 ### Trazabilidad + privacidad
