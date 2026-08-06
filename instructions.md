@@ -96,7 +96,8 @@ branch/fork operations. Setup is documented in CONTRIBUTING.md §10.
 
 1. **Private fork is REQUIRED** for using agentic-ecos with your own ecosystem.
    Only `main` (stable) and `dev` (integration) are public. Guide the user to
-   create a private fork on GitHub (`gh repo fork ... --private`) BEFORE
+   create a private fork on GitHub (`gh repo fork ... --clone --fork-name
+   agentic-ecos-priv` + `gh repo edit --visibility private`) BEFORE
    proceeding. The `workspace/` and `data/` patterns will be committed there —
    not in any public repo.
    See CONTRIBUTING.md §10 for the full flow.
