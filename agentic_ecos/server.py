@@ -39,6 +39,7 @@ from .ecosystem import (ecosystem_init, ecosystem_status, project_add,
                         load_config, find_config, ecosystem_tasks, ecosystem_task_add,
                         ecosystem_branch_create, ecosystem_sync_upstream,
                         ecosystem_merge_main)
+from .task_loop import claim_task, done_task, get_task_status
 
 try:
     from mcp.server import Server
@@ -49,6 +50,49 @@ except ImportError:
     sys.exit(1)
 
 server = Server("agentic-ecos")
+
+
+# Instrucciones del servidor — se inyectan automáticamente al agente al conectar
+# (campo `instructions` del handshake MCP). Agnóstico: funciona con cualquier
+# cliente MCP (OpenCode, Claude Code, Cursor, etc.). Mismo contenido que
+# instructions.md, que connect() agrega al opencode.jsonc del workspace.
+SERVER_INSTRUCTIONS = """agentic-ecos is the control plane for your digital ecosystem.
+It bootstraps, manages and operates traceable agentic infrastructure.
+
+TWO MODES — both work immediately after connecting the server.
+
+MODE 1 · SIMPLE (no ecosystem needed):
+  init_project(name, preset, target_path) — bootstrap agentic infra in a project
+  list_patterns() / get_pattern(name) — catalog of 15 agentic patterns
+  validate_structure(path) — check agentic infrastructure coverage
+  protocol_template(name) — get a protocol template
+  generate_file(name, target_path) — generate a single template file
+
+MODE 2 · ECOSYSTEM (multi-project coordination, requires private fork):
+  ecosystem_init(name, workspace_root) — bootstrap the ecosystem registry
+  ecosystem_status() — health of all projects
+  ecosystem_tasks() — cross-cutting + per-project task counts
+  ecosystem_task_claim(task_id, agent_id) — claim a task (race-free via git)
+  ecosystem_task_done(task_id, agent_id) — mark a task done (verifies ownership)
+  ecosystem_task_status(filter_agent) — filter tasks (unclaimed/claimed/done/agent)
+  ecosystem_branch_create(name) — create your ecosystem branch (traceable)
+  ecosystem_sync_upstream(branch) — sync main/dev with upstream
+  → See CONTRIBUTING.md §10 for the private-fork setup.
+
+TASK LIFECYCLE (local-first): ecosystem_task_add/claim/done/status work in any
+agent session — they commit and push via git to your branch (git push rejection
+handles multi-agent races). GitHub Actions task-automation is OPTIONAL: it runs
+the same cycle for docs/ops tasks automatically. Not required for local work.
+
+QUICK HELP:
+  knowledge_status() — knowledge state per tier
+  list_protocols() — protocol templates
+  list_patterns("coordination|knowledge|interface|...") — patterns by domain
+
+LLM is OPTIONAL: set LLM_API_KEY env var for AI-synthesized summaries,
+task proposals and PR reviews. Without it, everything works normally.
+
+Full docs: ARCHITECTURE.md, CONTRIBUTING.md, README.md"""
 
 
 def _make_tool(name: str, description: str, properties: dict, required: list | None = None) -> Tool:
@@ -237,6 +281,26 @@ async def handle_ecosystem_task_add(args: dict):
     )
 
 
+async def handle_ecosystem_task_claim(args: dict):
+    from pathlib import Path as _P
+    tasks_file = _P(args["tasks_file"]) if args.get("tasks_file") else None
+    return claim_task(args["task_id"], args["agent_id"], tasks_file=tasks_file)
+
+
+async def handle_ecosystem_task_done(args: dict):
+    from pathlib import Path as _P
+    tasks_file = _P(args["tasks_file"]) if args.get("tasks_file") else None
+    return done_task(args["task_id"], args["agent_id"], tasks_file=tasks_file)
+
+
+async def handle_ecosystem_task_status(args: dict):
+    from pathlib import Path as _P
+    tasks_file = _P(args["tasks_file"]) if args.get("tasks_file") else None
+    return get_task_status(task_id=args.get("task_id"),
+                           filter_agent=args.get("filter_agent"),
+                           tasks_file=tasks_file)
+
+
 async def handle_ecosystem_branch_create(args: dict):
     return ecosystem_branch_create(args["name"], base=args.get("base", "main"))
 
@@ -333,6 +397,9 @@ HANDLERS = {
     # Tareas cross-cutting
     "ecosystem_tasks": handle_ecosystem_tasks,
     "ecosystem_task_add": handle_ecosystem_task_add,
+    "ecosystem_task_claim": handle_ecosystem_task_claim,
+    "ecosystem_task_done": handle_ecosystem_task_done,
+    "ecosystem_task_status": handle_ecosystem_task_status,
     # Operaciones git del ecosistema
     "ecosystem_branch_create": handle_ecosystem_branch_create,
     "ecosystem_sync_upstream": handle_ecosystem_sync_upstream,
@@ -558,6 +625,31 @@ TOOL_DEFINITIONS = [
          "config_path": {"type": "string", "default": None}},
         required=["description"],
     ),
+    _make_tool(
+        "ecosystem_task_claim",
+        "Reclama una tarea: agrega [agent::] + [status:: doing] + commit + push. "
+        "Race-free con git push rejection (si otro agente reclamó primero, falla). Trazable con T-ID.",
+        {"task_id": {"type": "string"}, "agent_id": {"type": "string"},
+         "tasks_file": {"type": "string", "default": None}},
+        required=["task_id", "agent_id"],
+    ),
+    _make_tool(
+        "ecosystem_task_done",
+        "Marca una tarea como completada: [status:: done] + commit + push. "
+        "Verifica que el agent_id que completa es el que la reclamó.",
+        {"task_id": {"type": "string"}, "agent_id": {"type": "string"},
+         "tasks_file": {"type": "string", "default": None}},
+        required=["task_id", "agent_id"],
+    ),
+    _make_tool(
+        "ecosystem_task_status",
+        "Consulta el estado de tareas: por ID, o filtradas por agente/estado "
+        "(unclaimed | claimed | done | backlog | agent-id).",
+        {"task_id": {"type": "string", "default": None},
+         "filter_agent": {"type": "string", "default": None,
+                          "description": "unclaimed | claimed | done | backlog | <agent-id>"},
+         "tasks_file": {"type": "string", "default": None}},
+    ),
     # ─── Conocimiento (knowledge/ + promote) ───
     _make_tool(
         "promote_to_workspace",
@@ -631,6 +723,7 @@ async def _run():
             InitializationOptions(
                 server_name="agentic-ecos",
                 server_version=__version__,
+                instructions=SERVER_INSTRUCTIONS,
                 capabilities={
                     "tools": {},  # Tools are listed via list_tools()
                 },

@@ -19,10 +19,20 @@ across ALL projects — not just one.
 - `connect_status(target)` — which agents are configured and connected.
 - `scan_opencode()` — which projects in the workspace have agentic-ecos connected.
 
-**Tasks cross-cutting**
+**Tasks cross-cutting (full lifecycle)**
 - `ecosystem_tasks()` — aggregates workspace/tasks.md + per-project task counts.
 - `ecosystem_task_add(description, priority, type, scope)` — adds a task to
   workspace/tasks.md (committed on your ecosystem branch).
+- `ecosystem_task_claim(task_id, agent_id)` — claims a task: `[agent::]`
+  `[status:: doing]` + commit + push. Race-free via git push rejection.
+- `ecosystem_task_done(task_id, agent_id)` — marks a task done (verifies the
+  agent completing is the one that claimed it).
+- `ecosystem_task_status(filter_agent)` — filter tasks: unclaimed | claimed |
+  done | backlog | <agent-id>.
+
+> **Local-first**: these tools work in any agent session — they commit and push
+> via git to your branch. GitHub Actions task-automation is OPTIONAL (see
+> CONTRIBUTING.md §9); it runs the same cycle for docs/ops tasks automatically.
 
 **Generation**
 - `init_project(name, preset, target_path, repos)` — generates the full agentic

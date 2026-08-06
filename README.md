@@ -19,6 +19,16 @@ Instalar una vez, conectar desde todos tus proyectos.
 - **Provee lógicas agénticas trazables** — 15 patrones codificados, plantillas de
   protocolos, validación de estructura y próximos pasos priorizados.
 
+## Requirements
+
+| Requisito | Mínimo | Nota |
+|-----------|--------|------|
+| Python | 3.10+ | Compatible con 3.11, 3.12 |
+| git | Cualquiera reciente | Para clonar y para la coordinación agéntica (git push rejection) |
+| Instalador | `uv` (recomendado) o `pip` | `uv` es más rápido; `pip` funciona igual |
+| Cliente MCP | Cualquiera | OpenCode, Claude Code, Cursor, etc. — agnóstico |
+| LLM (opcional) | Ninguno | Solo para automatización con síntesis de IA (`LLM_API_KEY`) |
+
 ## Instalación
 
 ```bash
@@ -27,8 +37,12 @@ git clone https://github.com/deibanez/agentic-ecos.git
 cd agentic-ecos
 
 # 2. Instalar dependencias + el CLI
+# Con uv (recomendado):
 uv add --dev mcp
-uv pip install --editable .     # instala el comando `agentic-ecos` (CLI)
+uv pip install --editable .
+# Con pip:
+#   pip install mcp
+#   pip install --editable .
 
 # 3. Verificar que funciona
 agentic-ecos protocols           # lista las plantillas de protocolos
@@ -39,7 +53,7 @@ agentic-ecos connect --target ~/repos --agent auto
 ```
 
 > **Dos comandos**:
-> - `agentic-ecos` → CLI (init, ecosystem, connect, promote, ...)
+> - `agentic-ecos` → CLI (init, ecosystem, connect, promote, task-loop, ...)
 > - `agentic-ecos-server` → arranca el MCP server (para conectarlo manualmente
 >   a un agente si no usás la tool `connect`)
 
@@ -57,6 +71,33 @@ fork privado ni registro de ecosistema para esto:
 #   validate_structure("...") → verifica cobertura agéntica de un proyecto
 #   protocol_template("agent_protocol") → plantilla de protocolo
 ```
+
+### Flujo local de tareas (trabajo agéntico diario)
+
+El ciclo de tareas es **local-first**: funciona en cualquier sesión agéntica
+(como esta) usando git para la coordinación race-free. GitHub Actions es una
+capa opcional para automatizar docs/ops — no es necesaria para el trabajo local.
+
+```bash
+# 1. Crear una tarea (backlog)
+agentic-ecos ecosystem add-task "Fix staging deploy" --priority high --type ci-cd
+
+# 2. Ver qué hay libre para tomar
+agentic-ecos ecosystem task-status --filter unclaimed
+
+# 3. Reclamarla (race-free: si otro agente la tomó primero, git lo rechaza)
+agentic-ecos ecosystem claim E1 --agent opencode-nesto
+
+# 4. Trabajar con el T-ID: cambios → verify → commit
+#    (referenciar E1 en el commit: "fix: staging deploy [agent:: opencode-nesto]")
+
+# 5. Completarla (verifica que la reclamaste vos)
+agentic-ecos ecosystem done E1 --agent opencode-nesto
+```
+
+El mismo ciclo via MCP: `ecosystem_task_add` → `ecosystem_task_status` →
+`ecosystem_task_claim` → `ecosystem_task_done`. Cada acción queda en
+`AGENT_SESSION_LOG.md` con el T-ID para trazabilidad.
 
 ### Paso 2 — Crear tu ecosistema (opcional, avanzado)
 
@@ -108,8 +149,13 @@ Conecta el server a cualquier proyecto (en su `opencode.jsonc`):
 }
 ```
 
+**El agente se contextualiza automáticamente al conectar**: el servidor envía
+sus instrucciones en el handshake MCP (modos de uso, tools clave, configuración
+LLM), y `connect` agrega `instructions.md` al `opencode.jsonc` del workspace.
+No necesitás conocer las 37 tools de memoria — el agente sabe por dónde empezar.
+
 La tool `connect` hace esto automáticamente para uno o más agentes (OpenCode,
-Claude Code, Cursor) — preserva tus comentarios y configs existentes:
+Claude Code, Cursor, etc.) — preserva tus comentarios y configs existentes:
 
 ```bash
 agentic-ecos connect --target ~/repos --agent auto   # detecta agentes presentes
@@ -117,7 +163,7 @@ agentic-ecos connect --agent claude                  # solo Claude Code
 agentic-ecos connect --agent snippet                 # snippets para pegar manual
 ```
 
-### Tools (34)
+### Tools (37)
 
 **Generación y patrones**
 | Tool | Función |
@@ -147,11 +193,14 @@ agentic-ecos connect --agent snippet                 # snippets para pegar manua
 | `ecosystem_sync_upstream` | Sincroniza una branch con upstream (main/dev) — trazable |
 | `ecosystem_merge_main` | Merge de main a tu branch de ecosistema, reporta conflictos — trazable |
 
-**Tareas cross-cutting**
+**Tareas cross-cutting (ciclo completo)**
 | Tool | Función |
 |------|---------|
 | `ecosystem_tasks` | Agregado: tareas del workspace/tasks.md + por proyecto |
-| `ecosystem_task_add` | Agrega tarea cross-cutting al workspace/tasks.md |
+| `ecosystem_task_add` | Crea tarea cross-cutting (backlog) |
+| `ecosystem_task_claim` | Reclama tarea: `[agent::]` + `[status:: doing]` + commit/push (race-free) |
+| `ecosystem_task_done` | Completa tarea (verifica ownership) |
+| `ecosystem_task_status` | Filtra tareas: unclaimed / claimed / done / por agente |
 
 **Conocimiento (4 tiers)**
 | Tool | Función |
@@ -183,6 +232,9 @@ agentic-ecos ecosystem status
 agentic-ecos ecosystem add otro-svc --type frontend
 agentic-ecos ecosystem tasks
 agentic-ecos ecosystem add-task "Migrar satet" --priority high --type iac
+agentic-ecos ecosystem claim E1 --agent opencode-alpha      # reclamar (race-free)
+agentic-ecos ecosystem done E1 --agent opencode-alpha       # completar
+agentic-ecos ecosystem task-status --filter unclaimed       # tareas disponibles
 
 # Branches git del ecosistema (trazables)
 agentic-ecos ecosystem branch-create mi-eco --base main    # main estable | dev bleeding edge
@@ -291,7 +343,7 @@ STATE/ y kanban/ — todo interlinkeado con wiki links y tags.
 
 ```
 agentic_ecos/
-├── server.py        # MCP server (31 tools)
+├── server.py        # MCP server (37 tools)
 ├── generator.py     # init_project + generate_file + validate + CLI
 ├── patterns.py      # 15 patrones agénticos codificados (tier 1)
 ├── protocols.py     # plantillas de protocolos (5)
@@ -299,11 +351,14 @@ agentic_ecos/
 ├── ecosystem.py     # plano de control (agentic.toml, connect, tasks)
 ├── storage.py       # data/ + knowledge/ + workspace/ carga/guardado
 ├── knowledge.py     # promoción entre tiers
+├── llm.py           # motor de síntesis LLM agnóstico (DeepSeek/OpenAI/Anthropic)
+├── task_loop.py     # desarrollo continuo (detect→claim→plan→execute→verify)
 ├── knowledge/       # tier 2 · commiteado · comunidad (patterns/presets/traps)
 ├── data/            # tier 3 · patterns/presets commiteados (fork privado) · snapshots/state gitignored
 ├── static/          # scripts copiados tal cual (lock_manager, sync_kanban, ...)
 └── templates/       # plantillas markdown generables
 
+.github/workflows/   # 5 workflows: snapshot, weekly-summary, pre-dev, knowledge-review, task-loop
 workspace/           # tier 2.5 · solo en branches de ecosistema (fork privado) · agentic.toml + tasks.md
 docs/00_Global/      # vault autodocumental (Obsidian)
 ```

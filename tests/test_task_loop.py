@@ -156,5 +156,86 @@ class TestPlanTask(unittest.TestCase):
             assert "E1" in r["plan"]
 
 
+# ─── Ciclo de vida de tareas (claim/done/filter) ────────────────────────────
+
+def _make_single_task(tmp_path, line="- [ ] E1: Tarea docs [priority:: medium] [status:: backlog] [type:: docs] [scope:: ecosystem]\n"):
+    ws = tmp_path / "ws"
+    ws.mkdir(exist_ok=True)
+    tasks = ws / "tasks.md"
+    tasks.write_text(
+        "---\ntags: [layer/l0, tasks]\n---\n\n# TASKS\n\n<!-- TASKS_START -->\n"
+        + line + "<!-- TASKS_END -->\n"
+    )
+    return ws, tasks
+
+
+class TestTaskLifecycle(unittest.TestCase):
+    def test_get_status_unclaimed(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            ws, tasks = _make_single_task(Path(d))
+            r = task_loop.get_task_status(filter_agent="unclaimed", tasks_file=tasks)
+            assert r["ok"] is True
+            assert len(r["tasks"]) == 1
+            assert r["tasks"][0]["id"] == "E1"
+
+    def test_get_status_claimed_filter(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            ws, tasks = _make_single_task(Path(d))
+            # Marcar E1 como reclamada por otro agente
+            content = tasks.read_text().replace(
+                "type:: docs]", "type:: docs] [agent:: alpha] [status:: doing]")
+            tasks.write_text(content)
+            # filter_agent=alpha → la encuentra
+            r = task_loop.get_task_status(filter_agent="alpha", tasks_file=tasks)
+            assert len(r["tasks"]) == 1
+            # filter_agent=unclaimed → ya no está (está doing + agent)
+            r2 = task_loop.get_task_status(filter_agent="unclaimed", tasks_file=tasks)
+            assert len(r2["tasks"]) == 0
+
+    def test_done_task_verifies_ownership(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            ws, tasks = _make_single_task(Path(d))
+            # Reclamada por alpha
+            content = tasks.read_text().replace(
+                "type:: docs]", "type:: docs] [agent:: alpha] [status:: doing]")
+            tasks.write_text(content)
+            # beta intenta completarla → falla (ownership)
+            r = task_loop.done_task("E1", "beta", tasks_file=tasks)
+            assert r["ok"] is False
+            assert "alpha" in r["error"]
+
+    def test_done_task_success_with_owner(self):
+        import tempfile
+        import subprocess
+        with tempfile.TemporaryDirectory() as d:
+            # Necesita repo git para commit/push — usar dry mock no aplica.
+            # Probamos la verificación de ownership (falla si no es owner) sin git.
+            ws, tasks = _make_single_task(Path(d))
+            content = tasks.read_text().replace(
+                "type:: docs]", "type:: docs] [agent:: alpha] [status:: doing]")
+            tasks.write_text(content)
+            # alpha completa → verificación de ownership pasa, pero sin repo git
+            # el commit falla → retorna error de commit, no de ownership
+            r = task_loop.done_task("E1", "alpha", tasks_file=tasks)
+            # No debe ser error de ownership (no menciona "reclamada por")
+            assert "reclamada por" not in r.get("error", "")
+
+    def test_claim_fails_cleanly_without_git(self):
+        """El claim no debe dejar modificación local si no hay repo git."""
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            ws, tasks = _make_single_task(Path(d))
+            original_content = tasks.read_text()
+            r = task_loop.claim_task("E1", "opencode-alpha", tasks_file=tasks)
+            assert r["ok"] is False
+            # El archivo NO debe tener [agent::] (se revirtió la modificación)
+            assert "agent::" not in tasks.read_text()
+            # El contenido debe ser el original
+            assert tasks.read_text() == original_content
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -40,6 +40,7 @@ purpose: Estado del desarrollo de agentic-ecos
 | 10 | Tools git del ecosistema + rama dev | ✅ | ecosystem_branch_create/sync/merge_main + dev en upstream |
 | 11 | Instalación simplificada (clone-and-run) | ✅ | entry points agentic-ecos (CLI) + agentic-ecos-server, connect usa venv |
 | 12 | Automatización CI/CD con LLMs | ✅ | CLI --json, llm.py (agnóstico), 5 workflows, task_loop (H1-H3) |
+| 13 | Gap de tareas cerrado + auto-contexto | ✅ | claim/done/status tools + SERVER_INSTRUCTIONS + connect instructions |
 
 ---
 

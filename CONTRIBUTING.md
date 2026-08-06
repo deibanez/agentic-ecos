@@ -241,6 +241,13 @@ síntesis LLM: resúmenes semanales, propuestas de tareas, verificación de PRs
 y revisión de conocimiento. **Es opt-in** — la infraestructura base funciona
 sin LLM. Se activa configurando secrets.
 
+> **Local-first**: las tools de tareas (`ecosystem_task_add`/`claim`/`done`/
+> `status`) son para **cualquier sesión agéntica local** — se commitean y
+> pushean via git a tu branch (git push rejection maneja las races entre
+> agentes). El workflow `task-automation.yml` es una capa **opcional** de CI
+> que automatiza el mismo ciclo para tareas `docs`/`ops`. No es necesaria para
+> el trabajo local — es para quien quiere ejecución automática periódica.
+
 ### Requisitos (GitHub secrets)
 
 Configurá en `Settings → Secrets and variables → Actions`:
