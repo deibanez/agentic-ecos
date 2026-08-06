@@ -71,7 +71,7 @@ Todo se commitea en tu branch de ecosistema (`workspace/`, `knowledge/`,
 | 3 | `data/patterns-custom.json` y `data/presets-custom.json` SÍ se commitean (fork privado, trazabilidad). `data/ecosystem-snapshots/` y `data/state.json` NO (runtime data). | `data/` |
 | 4 | `workspace/` solo en branches de ecosistema (fork privado), nunca en main | `workspace/` |
 | 5 | Todo cambio de API MCP (tools) debe actualizar README.md + ARCHITECTURE.md | `server.py` |
-| 6 | **Solo `main` es público.** Fork **privado** obligatorio para cualquier ecosistema (`gh repo fork ... --private`). `workspace/` y `data/` nunca en repos públicos. | `workspace/` / `data/` |
+| 6 | **Solo `main` es público.** Fork **privado** obligatorio para cualquier ecosistema (`gh repo fork ... --clone --fork-name agentic-ecos-priv` + `gh repo edit --visibility private`). `workspace/` y `data/` nunca en repos públicos. | `workspace/` / `data/` |
 | 7 | Nunca crear PR desde un branch con `workspace/` — contribuir desde un branch limpio de main (cherry-pick de `knowledge/`). Ver CONTRIBUTING.md §10 | PRs |
 
 ---

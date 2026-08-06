@@ -54,9 +54,10 @@ de ecosistema (en fork privado) crea el suyo.
 > upstream son públicos.
 
 ```bash
-# 1. Crear el fork privado (una vez)
-gh repo fork deibanez/agentic-ecos --clone --private
-cd agentic-ecos
+# 1. Crear el fork privado (una vez) — universal, funciona para dueño y terceros
+gh repo fork deibanez/agentic-ecos --clone --fork-name agentic-ecos-priv
+gh repo edit --visibility private
+cd agentic-ecos-priv
 
 # 2. Agregar upstream para sincronizar (una vez)
 git remote add upstream https://github.com/deibanez/agentic-ecos.git
@@ -336,9 +337,10 @@ datos "sensibles", es la regla. Solo `main` es público por diseño.
 ### Setup
 
 ```bash
-# 1. Crear el fork privado (una vez)
-gh repo fork deibanez/agentic-ecos --clone --private
-cd agentic-ecos
+# 1. Crear el fork privado (una vez) — universal, funciona para dueño y terceros
+gh repo fork deibanez/agentic-ecos --clone --fork-name agentic-ecos-priv
+gh repo edit --visibility private
+cd agentic-ecos-priv
 
 # 2. Agregar upstream para sincronizar (una vez)
 git remote add upstream https://github.com/deibanez/agentic-ecos.git

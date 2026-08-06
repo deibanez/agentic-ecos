@@ -45,6 +45,7 @@ purpose: Estado del desarrollo de agentic-ecos
 | 15 | Curaduría de patrones universales de agv-docs | ✅ | 13 traps + 2 patrones + protocolos + skills enriquecidos |
 | 16 | Contexto sistémico en respuestas MCP | ✅ | _context inyectado en cada tool (ecosystem + tasks + knowledge) |
 | 17 | Home.md dinámico + suggestions | ✅ | sync_home_md + sugerencias accionables en _context |
+| 18 | Fix comando fork privado universal | ✅ | --fork-name agentic-ecos-priv en docs (dueño y terceros) |
 
 ---
 

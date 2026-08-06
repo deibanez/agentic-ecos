@@ -16,14 +16,16 @@ All of this works **local-first**: agents coordinate via git push rejection,
 no central server required. GitHub Actions and LLM-synthesized automation are
 available as an optional layer on top.
 
-- **Python 3.10+** · **git** · **37 MCP tools** · **73 tests** · **[MIT](LICENSE)**
+- **Python 3.10+** · **git** · **37 MCP tools** · **85 tests** · **[MIT](LICENSE)**
 - Compatible with any MCP client: OpenCode, Claude Code, Cursor, and others
 - LLM-agnostic automation: DeepSeek, GPT, Claude, Ollama — opt-in
 - Vault autodocumental abrible en Obsidian (`docs/`)
 
 ```bash
-gh repo fork deibanez/agentic-ecos --clone --private
-cd agentic-ecos && uv add --dev mcp && uv pip install --editable .
+# Fork con nombre propio (universal: funciona para dueño y terceros)
+gh repo fork deibanez/agentic-ecos --clone --fork-name agentic-ecos-priv
+gh repo edit --visibility private          # settings → danger zone → change visibility
+cd agentic-ecos-priv && uv add --dev mcp && uv pip install --editable .
 agentic-ecos connect --target ~/repos --agent auto
 ```
 
@@ -57,9 +59,10 @@ necesites. Solo `main` y `dev` del upstream son públicos — tu ecosistema vive
 en el fork privado (trazabilidad completa con `git log`).
 
 ```bash
-# 0. Fork privado + upstream (una vez)
-gh repo fork deibanez/agentic-ecos --clone --private
-cd agentic-ecos
+# 0. Fork privado + upstream (una vez) — universal, funciona para dueño y terceros
+gh repo fork deibanez/agentic-ecos --clone --fork-name agentic-ecos-priv
+gh repo edit --visibility private
+cd agentic-ecos-priv
 git remote add upstream https://github.com/deibanez/agentic-ecos.git
 
 # 1. Dependencias + CLI (una vez)
